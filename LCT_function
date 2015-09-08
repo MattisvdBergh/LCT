@@ -1,0 +1,274 @@
+
+LCT = function(data,LG,LGS,n_indic){
+# Input description ####
+
+  # data = Directory of the data (e.g., "C:\\Users\\Mattis\\data.dat")
+  ## The data must contain a weight column (named weight!) which contains
+  ## either the frequency of every response, or a one for every participant
+  
+  # LG = directory of latent gold, (e.g., LG = "C:/Users/Mattis/lg50.exe")
+  
+  # LGS = name of latent gold syntax for 2 classes, which should be in the working directory
+  ## The syntax must estimate a one class and a two class model
+  ## Furthermore the output line of the syntax for the one class model must end with:
+  ### outfile 'H1_c1.txt' classification;
+  ## The output line of the syntax for the two class must model end with:
+  ### outfile 'H1_c2.txt' classification;
+  
+  # n_indic = number of indicators
+  
+# Start function by making variables ####
+
+  # Read the original data
+  mydata = read.table(data, header = TRUE)
+  Ntot = sum(mydata$weight)
+  
+  # The tree is summarized in two lists. 
+  # One with the sizes of the splits, and one with the names.  
+  names.classes = splits.classes = list()
+
+  # Level of the hierarchy
+  H_class = 1        
+  
+  # Create results folder and put LCT syntax there
+  syntax = readLines(LGS)
+  mainDir <- getwd();  subDir <- "Results"
+  dir.create(file.path(mainDir, subDir), showWarnings = FALSE)
+  setwd(file.path(mainDir, subDir))
+  syntax[grep("infile", syntax)] = capture.output(cat(paste0("infile \'", data, "'")))
+  write.table(syntax, "LCT.lgs", row.names = FALSE, quote = FALSE, col.names = FALSE)
+  
+# Perform LC for 1- and 2-classes ####
+  
+  shell(paste(LG, "LCT.lgs"))
+  
+# Results ####
+  
+  ## Write results to LCT file
+  temp_results = readLines("LCT.lst")
+  write.table(temp_results, paste("LCT 0 .lst"),
+              row.names = FALSE, quote = FALSE, col.names = FALSE)
+  
+  ## What is the lowest BIC?
+  LL = as.numeric(gsub(",", ".", sapply(strsplit(temp_results[grepl("Log-likelihood", temp_results)][seq(2,length(temp_results[grepl("Log-likelihood", temp_results)]), 2)], "\t"), function(x){x[2]})))
+  Npar = as.numeric(sapply(strsplit(temp_results[grepl("Npar", temp_results)][-1], "\t"),function(x){x[2]}))
+  BIC = -2*LL+log(Ntot) * Npar
+  solution = which.min(BIC)
+  
+  ## Put results in R objects
+  # Information Criteria
+  AIC3 = as.numeric(gsub(",", ".", sapply(strsplit(temp_results[grepl("AIC3", temp_results)][c(2, 4)], "\t"), function(x){x[2]})))
+  IC = matrix(c(LL,BIC, AIC3), ncol = 6)
+  row.names(IC) = "0"
+  colnames(IC) = c("LL 1", "LL 2", "BIC 1", "BIC 2", "AIC3 1", "AIC3 2")
+  
+  # Class proportions
+  Classpp = data.frame(t(as.numeric(gsub(",", ".", strsplit(temp_results[grepl("Size", temp_results)][2], "\t")[[1]][c(2,4)]))))
+  order_Classpp = order(Classpp, decreasing = TRUE)
+  Classpp = Classpp_temp = sort(Classpp, decreasing = TRUE)
+  rownames(Classpp) = 0
+  colnames(Classpp) = 1 : solution
+  
+  # Conditional probabilities
+  EV_temp = matrix(as.numeric(gsub(",", ".", t(sapply(strsplit(temp_results[grep("Mean", temp_results)][(n_indic+2):(n_indic+1+n_indic)], "\t"), function(x){x[c(2,4)]})))), ncol = 2)
+  EV = as.data.frame(EV_temp[,order_Classpp])
+  rownames(EV) = sapply(strsplit(temp_results[grep("Mean", temp_results)-3][1:n_indic], "\t"), function(x){x[1]})
+  colnames(EV) = paste0(0, 1:solution)
+  
+  # Posteriors
+  Post = read.delim(paste0("H1c0_sol", solution, ".txt"), dec = ",")[, (n_indic + 1):(n_indic + 1 + solution)]
+  Post = Post[c(1,order_Classpp+1)]
+  colnames(Post) = c("W_0",paste0("Post_",0,1:solution))
+  
+  # Entropy
+  Entropy = t(data.frame(as.numeric(gsub(",",".",sapply(strsplit(temp_results[grepl("Entr", temp_results)], "\t")[(2*solution-1):(2*solution)],function(x){x[[2]]})))))
+  row.names(Entropy) = "0"
+  colnames(Entropy) = c("Rsquared", "Absolute")
+  
+  # Classification error
+  CE = as.numeric(gsub(",",".",strsplit(temp_results[grepl("Classification errors", temp_results)], "\t")[[2]][2]))
+  names(CE) = "0"
+  
+  # Total BVR
+  Total_BVR = t(as.matrix(as.numeric(gsub(",", ".", lapply(strsplit(temp_results[grepl("Total BVR", temp_results)], "\t"),function(x){x[2]})))))
+  rownames(Total_BVR) = "0"
+  colnames(Total_BVR) = c(1,2)
+  
+  # Rbic
+  Rbic = (IC[1,1]-IC[1,solution])/IC[1,1]
+  names(Rbic) = "0"
+  
+  ## Update the tree after the first split
+  splits.classes[[H_class]] = solution
+  names.classes[[1]] = "0"
+  names.classes[[2]]  = paste0("0", 1:solution)
+  Splitpoints = 0
+
+# The above procedure repeats, while not all splits at the lowest level are 1
+## Start while loop ---------------------------------
+  
+  # If there are classes which can be split up, repeat
+  while( !all (splits.classes[[length(splits.classes)]] == 1)){
+    
+    # Updat variables with the position in the tree:
+    # Size.Previous.Splits keeps track of the split size of every previous split.
+    # N.Previous.Splits keeps track of the number of previous splits.
+    H_class = H_class+1 
+    Size.Previous.Splits = 1:splits.classes[[length(splits.classes)]][1] # which classes of the previous split are to be tested
+    N.Previous.Splits = 1:length(splits.classes[[length(splits.classes)]]) # originating from which class in the previous split
+    
+    # names.classes.temp will contain the new names of the split classes and will be later added to names.classes
+    # splits.classes.temp will contain the split sizes of the new splits and will be later added to splits.classes
+    names.classes.temp = splits.classes.temp = numeric() # to be filled up with number of classes at each hierarchical level
+    
+    # At each hierarchical level, we have to run through the the number of splits performed at the previous level.
+    for(j in N.Previous.Splits){
+      
+      # The size of the previous split must updated
+      if(j != 1){
+        Size.Previous.Splits = Size.Previous.Splits + 
+          splits.classes[[length(splits.classes)]][j - 1]
+        }
+      
+      # Correction if we switch number of classes
+      length(Size.Previous.Splits) = splits.classes[[length(splits.classes)]][j]
+      if(any(is.na(Size.Previous.Splits))){
+        for(k in which(is.na(Size.Previous.Splits))){
+          Size.Previous.Splits[k] = Size.Previous.Splits[k - 1] + 1
+        }}
+      
+      # If no previous split is made, no next split has to be checked and we go to the next split
+      if(length(names.classes[[length(names.classes)]][Size.Previous.Splits])>1){
+        
+        # For every new class of the next previous split
+        for(i in names.classes[[length(names.classes)]][Size.Previous.Splits]){
+          
+## Make new data ####
+          
+            data = read.delim(paste0("H", H_class-1, "c", substr(i, 1, H_class - 1), "_sol", splits.classes[[length(splits.classes)]][j], ".txt"), dec = ",")
+            if(is.factor(data$weight)){data$weight = as.numeric(levels(data$weight))[data$weight]}
+            order_Classpp = order(c(sum(data$weight*data$Cluster.1), sum(data$weight*data$Cluster.2)), decreasing = TRUE)
+            mydata = cbind(data[,1:(n_indic)],data[,n_indic + 1 + order_Classpp[which(i==names.classes[[length(names.classes)]][Size.Previous.Splits])]] * data$weight)
+            colnames(mydata)[n_indic+1] = "weight"
+            write.table(mydata, paste0("mydata", H_class, i, ".dat"), sep = "\t", row.names = FALSE, quote = FALSE)
+            
+## Update LGS ####
+            
+          # New datafile
+          syntax = readLines("LCT.lgs")
+          syntax[grep("infile", syntax)]  = capture.output(cat(paste0("infile \'", normalizePath(getwd()), "\\mydata", H_class, i, ".dat'")))
+          
+          # New output files
+          temp_syntax = strsplit(syntax[grep("outfile", syntax)], " ")
+          temp_syntax[[1]][grepl(".txt", temp_syntax[[1]])] = paste0("'H", H_class, "c", i, "_sol1.txt'")
+          temp_syntax[[2]][grepl(".txt", temp_syntax[[2]])] = paste0("'H", H_class, "c", i, "_sol2.txt'")
+          syntax[grep("outfile", syntax)[1]] = capture.output(cat(temp_syntax[[1]]))
+          syntax[grep("outfile", syntax)[2]] = capture.output(cat(temp_syntax[[2]]))
+          write.table(syntax, "LCT.lgs", row.names = FALSE, quote = FALSE, col.names = FALSE)
+          
+## Perform LC for 1- and 2-classes ####
+
+          shell(paste(LG, "LCT.lgs"))
+          
+## Results ####
+          
+          ## Write results to LCT file
+          temp_results = readLines("LCT.lst")
+          write.table(temp_results, paste("LCT", i, ".lst"),
+                      row.names = FALSE, quote = FALSE, col.names = FALSE)
+          
+          # What is the lowest BIC?
+          LL = as.numeric(gsub(",",".",sapply(strsplit(temp_results[grepl("Log-likelihood", temp_results)][seq(2,length(temp_results[grepl("Log-likelihood", temp_results)]), 2)], "\t"),function(x){x[2]})))
+          Npar = as.numeric(sapply(strsplit(temp_results[grepl("Npar", temp_results)][-1], "\t"),function(x){x[2]}))
+          BIC = -2*LL+log(Ntot) * Npar
+          solution = which.min(BIC)
+          
+          # Save results into R objects
+          # Information Criteria
+          AIC3 = as.numeric(gsub(",", ".", sapply(strsplit(temp_results[grepl("AIC3", temp_results)][c(2, 4)], "\t"), function(x){x[2]})))
+          IC_temp = matrix(c(LL,BIC, AIC3), ncol = 6)
+          IC = rbind(IC, IC_temp)
+          row.names(IC)[nrow(IC)] = i
+          
+          # Do not save results on the Class proportions,
+          # Conditional probabilities and Posteriors if no split is made
+          if(solution > 1){
+            Splitpoints_temp = i
+            Splitpoints = c(Splitpoints, Splitpoints_temp)
+          
+          # Class proportions
+          Classpp_temp = data.frame(t(as.numeric(gsub(",", ".", strsplit(temp_results[grepl("Size", temp_results)][2], "\t")[[1]][c(2,4)]))))
+          order_Classpp = order(Classpp_temp, decreasing = TRUE)
+          Classpp_temp = sort(Classpp_temp, decreasing = TRUE)
+          colnames(Classpp_temp) = 1:solution
+          names_Classpp = rownames(Classpp)
+          Classpp = rbind(Classpp, Classpp_temp)
+          rownames(Classpp) = c(names_Classpp,i)
+          
+          # Conditional probabilities
+          EV_temp = matrix(as.numeric(gsub(",", ".", t(sapply(strsplit(temp_results[grep("Mean", temp_results)][(n_indic+2):(n_indic+1+n_indic)], "\t"), function(x){x[c(2,4)]})))), ncol = 2)
+          EV_temp = as.data.frame(EV_temp[,order_Classpp])
+          EV = cbind(EV, data.frame(EV_temp))
+          colnames(EV)[(ncol(EV) - solution + 1):ncol(EV)] = paste0(i, 1:solution)
+          
+          # Posteriors
+          PostTemp =  read.delim(paste0("H", H_class, "c", i, "_sol", solution, ".txt"),dec = ",")[, (n_indic + 1):(n_indic + 1 + solution)]
+          PostTemp = PostTemp[,c(1,order_Classpp + 1)]
+          colnames(PostTemp) = c(paste0("W_",i),paste0("Post_",i,1:solution))
+          Post = cbind(Post,PostTemp)
+          }
+          
+          # Entropy
+          Ent_temp = as.numeric(gsub(",", ".", sapply(strsplit(temp_results[grepl("Entr", temp_results)], "\t")[3:4],function(x){x[[2]]})))
+          Entropy = rbind(Entropy, Ent_temp)
+          rownames(Entropy)[nrow(Entropy)] = i
+          
+          # Classification error
+          CE_temp = as.numeric(gsub(",",".",strsplit(temp_results[grepl("Classification errors", temp_results)], "\t")[[2]][2]))
+          CE = c(CE, CE_temp)
+          names(CE)[length(CE)] = i
+          
+          # Total BVR
+          Total_BVR_temp = as.numeric(gsub(",", ".", lapply(strsplit(temp_results[grepl("Total BVR", temp_results)], "\t"),function(x){x[2]})))
+          Total_BVR = rbind(Total_BVR, Total_BVR_temp)
+          rownames(Total_BVR)[nrow(Total_BVR)] = i
+          
+          ## Update the names and split sizes if there were splits
+          for(k in 1:solution){names.classes.temp = c(names.classes.temp, paste0(i, k))}
+          splits.classes.temp = c(splits.classes.temp, solution)
+        }
+        
+        # Update the names and split sizes if there were no splits
+      } else {
+        names.classes.temp = c(names.classes.temp, paste0(names.classes[[length(names.classes)]][Size.Previous.Splits], 1))
+        splits.classes.temp = c(splits.classes.temp, 1)
+      }}
+    
+    # From temporal objects in loop to global objects
+    names.classes[[length(names.classes) + 1]] = names.classes.temp
+    splits.classes[[length(splits.classes) + 1]] = splits.classes.temp
+    print(names.classes)
+  }
+# End function ####
+  results = list(names.classes, IC, splits.classes, EV, Classpp, Post, Rbic, Entropy, CE, Total_BVR, Splitpoints)
+  names(results) = c("Names", "IC", "Splits", "EV", "Classpp", "Posteriors", "Rbic", "Entropy", "CE", "Total_BVR", "Splitpoints")
+  return(results)
+}
+
+# LCT provides a list where:
+## $Names contains the class names,
+## $IC contains the LL and BIC of every split,
+## $Splits contains the size of every split
+## $EV contains the estimated conditional probabilities
+## $Classpp contains the Class proportions
+## $Posteriors is a large matrix with subsequently for every class:
+### the weights (proportions) for every response pattern/participant,
+### followed by the posterior probabilities of the split of that class
+## $Rbic contains the relative BIC improvement
+## $Entropy contains the Entropy of each split
+## $CE contains the Classification Error of each split
+
+
+
+
+
