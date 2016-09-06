@@ -1,4 +1,3 @@
-
 LCT = function(dataDir, LG, LGS,
                 decreasing = TRUE, maxClassSplit1 = 2,
                 maxClassSplit2 = 2, stopCriterium = "BIC",
@@ -26,15 +25,7 @@ LCT = function(dataDir, LG, LGS,
   # Perform LC for 1- and 2-classes ####
   shell(paste(LG, "LCT0.lgs", "/b"))
 
-  # foo = function(...){print(1)}
-  # obj = 'case1'
-  # obj = 'case2'
-  # output = switch(obj,
-  #        case1 = foo(),
-  #        case2 = print(1:10),
-  #        case3 = 3)
-
-  ## Write results to LCT file
+  # Write results to LCT file
   resultsTemp = readLines("LCT0.lst")
 
   helpFun = function(x, greplIdx, idx = NULL) {
@@ -239,25 +230,20 @@ LCT = function(dataDir, LG, LGS,
 makeSyntaxDic = function(dataDir, Hclass, syntax, maxClassSplit1, CC = 0) {
 
   syntax[grep("infile", syntax)] = capture.output(cat(paste0("infile \'", dataDir, "'")))
+  k = 1:maxClassSplit1
 
 
   # lm is the number of lines of one model.
   # bm is the beginning where the next model should start
   # em is the end where the next model should end.
-  k = 1:maxClassSplit1
-
   lm = which(syntax == "end model")[2] - which(syntax == "model")[2] + 1
   bm = 6 + (k - 1) * lm
   em = 5 + k * lm
 
   newSyntax = character(em[length(em)])
-
   newSyntax[1:5] = syntax[1:5]
-
   newSyntax[6:em[length(em)]] = rep(syntax[6:em[1]], maxClassSplit1)
-
   tempCsv = strsplit(newSyntax[grep("write", newSyntax)], "write=")
-
   newSyntax[grep("write", newSyntax)] = paste0(tempCsv[[1]][[1]],
                                                paste0("write='H", Hclass, "c", CC, "_sol", k, ".csv'"))
 
