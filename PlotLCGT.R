@@ -1,36 +1,4 @@
-# rm(list=ls())
-# LT = TRUE
-# folder = "D:/"
-# folder2 = "D:\\"
-#
-# if(LT == TRUE){
-#   folder = "C:/Users/Mattis/"
-#   folder2 = "C:\\Users\\Mattis\\"
-# }
-#
-# LG = "D:/Application_Data/LatentGOLD5.1/lg51.exe"
-# if(LT == TRUE){LG = "C:/Users/Mattis/Documents/LatentGOLD5.1/lg51.exe"}
-#
-# MainFolder = "SURFdrive/PhD Mattis/ProjectArtikel2/EVS/"
-# MainFolder2 = "SURFdrive\\PhD Mattis\\ProjectArtikel2\\EVS\\"
-#
-# load(paste0(folder, MainFolder, "Results3split_10_5.Rdata"))
-# Plot.PPlct(Results3, uptolevel = 3)
-
-# Results = Results.G2
-# # Results = test3
-# uptolevel = 4
-# filetype = "pdf"
-# filename = "test"
-# width = 7
-# height = 7
-# cex.axis = 1
-# vsize = ""
-# 
-# Plot.PPlct(test, timeSequence = 0:22)
-# Plot.PPlct(test3, timeSequence = 0:22, uptolevel = 3)
-
-Plot.PPlct = function(Results,
+Plot.lcgt = function(Results,
                       uptolevel = 4,
                       timeSequence = 1:4,
                       filetype = "pdf",

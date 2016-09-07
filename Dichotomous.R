@@ -216,11 +216,11 @@ LCT = function(dataDir, LG, LGS,
   }
 
   # End function ####
-  results = list(namesClasses, out$IC, splitsClasses, out$Parms.cpp, out$Classpp, out$Parms.time,
-                 out$Post, Splitpoints, ClassppGlobal, names.split.classes, final.classes,
+  results = list(namesClasses, out$IC, splitsClasses, out$EV, out$Classpp, out$Post,
+                 Splitpoints, ClassppGlobal, names.split.classes, final.classes,
                  Ntot, names.classes.clean)
-  names(results) = c("Names", "IC", "Splits", "ParametersClassProportions", "ClassProportions", "ParametersTimepoints",
-                    "Posteriors", "Splitpoints", "ClassppGlobal", "Names.Split.Classes", "Final.Classes",
+  names(results) = c("Names", "IC", "Splits", "EV", "ClassProportions",
+                    "Posteriors", "Splitpoints", "ClassppGlobal", "namesSplitClasses", "finalClasses",
                      "Ntot", "Names.clean")
   setwd(mainDir)
   return(results)
