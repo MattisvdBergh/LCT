@@ -189,7 +189,7 @@ LCT = function(dataDir, LG, LGS, alternativesDir, choicesDir,
   }
 
   ### Global class proportions can be found in ClassppGlobal
-  Classpp = out$Classpp[!apply(out$Classpp, 1, anyNA),]
+  Classpp = out$Classpp#[!apply(out$Classpp, 1, anyNA),]
   Classpp.matrix = t(Classpp)
   Classpp.numeric = as.numeric(Classpp.matrix)
   Classpp.numeric.names = character()
@@ -256,10 +256,10 @@ LCT = function(dataDir, LG, LGS, alternativesDir, choicesDir,
   
   # End function ####
   results = list(namesClasses, out$IC, splitsClasses, out$EV, out$Classpp, out$Post,
-                 Splitpoints, ClassppGlobal, names.split.classes, final.classes)
+                 Splitpoints, ClassppGlobal, names.split.classes, final.classes, names.classes.clean)
   names(results) = c("Names", "IC", "Splits", "EV", "Classpp", "Posteriors",
                      "Splitpoints", "ClassppGlobal", "Names.Split.Classes",
-                     "Final.Classes")
+                     "Final.Classes", "Names.clean")
   setwd(mainDir)
   return(results)
 }
@@ -340,7 +340,7 @@ getOutputDiCh = function(resultsTemp, Hclass, maxClassSplit1, CC = 0, Ntot = Nto
   solution = which.min(IC[[1, grep(stopCriterium, colnames(IC))]])
   
   csvTemp = read.csv(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"),
-                     sep = ";", nrows = 1, skip = 8, header = FALSE, dec = ",")
+                     sep = ",", nrows = 1, skip = 8, header = FALSE, dec = ",")
   
   # Class proportions
   Classpp.temp = csvTemp[1, -c(1:5)][1:solution]
