@@ -2,12 +2,12 @@
 #'
 #' Explore a Latent Class Tree model with Latent GOLD 5.1
 #'
-#' @param res Treeobject
+#' @param res Treeobject from
 #' @param LG Path to the Latent GOLD executable
 #' @param levelsCovariates Vector with the levels of each of the covariates (1 = continuous, 1< = ordinal)
 #' @param measurementLevels Whether the ordering of classes should be decreasing or not. Defaults to TRUE.
 #' @param dirTreeResults Maximum size of the first split of the tree. Will be assessed with the criterion given in stopCriterium. Defaults to two.
-#' @param ResultsFolder
+#' @param ResultsFolder folder with results
 #'
 #' @return None
 #' @export
