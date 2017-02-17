@@ -72,7 +72,6 @@ exploreTree = function(res,
     syntaxThree[grep("write", syntaxThree)] =  paste0(
       "write = 'Results", uSplits[reps], ".csv' writeestimatedvalues='ev", uSplits[reps], ".txt';")
 
-
     ncharDirPost = nchar(strsplit(dirPost[reps], ".", fixed = TRUE)[[1]][1])
     nClass[reps] = substr(dirPost[reps], ncharDirPost, ncharDirPost)
     syntaxThreeTemp = sub("Cluster#1 Cluster#2", paste0("Cluster#", 1:nClass[reps], collapse = " "), syntaxThree)

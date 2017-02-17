@@ -1,10 +1,10 @@
 #' Illustration of crayon colors
 #'
-#' Creates a plot of the crayon colors in \code{\link{brocolors}}
 #'
-#' @param method2order method to order colors (\code{"hsv"} or \code{"cluster"})
+#'
+#' @param method2order method to order
 #' @param cex character expansion for the text
-#' @param mar margin paramaters; vector of length 4 (see \code{\link[graphics]{par}})
+#' @param mar margin paramaters; vector of len
 #'
 #' @return None
 #' @export
@@ -12,18 +12,18 @@ LCGT = function(dataDir,
                 LG,
                 LGS = NULL,
                 dependent = NULL,
+                levelsDependent = 2,
                 independent = NULL,
                 caseid = NULL,
-                decreasing = TRUE,
+                weight = "weight",
+                resultsName = "",
                 maxClassSplit1 = 2,
                 maxClassSplit2 = 2,
+                decreasing = TRUE,
                 stopCriterium = "BIC",
-                resultsName = "",
                 minSampleSize = 5,
-                levelsDependent = 2,
-                weight = "weight",
                 nKeepVariables = 0,
-                Covariates3step = NULL,
+                namesKeepVariables = NULL,
                 sets = 16,
                 iterations = 50){
 
@@ -95,7 +95,7 @@ LCGT = function(dataDir,
              syntax = syntax,
              maxClassSplit1 = maxClassSplit1,
              nKeepVariables = nKeepVariables,
-             Covariates3step = Covariates3step)
+             namesKeepVariables = namesKeepVariables)
 
   # Perform LC for 1- and 2-classes
   shell(paste(LG, "LCT0.lgs", "/b"))
@@ -108,7 +108,7 @@ LCGT = function(dataDir,
 
   Ntot = helpFun(resultsTemp, "Number of cases")[1]
   if(minSampleSize < 1){minSampleSize = Ntot * minSampleSize}
-  out = getOutput(resultsTemp, Hclass, maxClassSplit1,
+  out = getOutputLCGT(resultsTemp, Hclass, maxClassSplit1,
                   Ntot = Ntot, stopCriterium = stopCriterium,
                   decreasing = decreasing, levelsDependent = levelsDependent,
                   nIndependent = nIndependent)
@@ -195,7 +195,7 @@ LCGT = function(dataDir,
             maxClassSplit1 = maxClassSplit2,
             CC = preC[iCC],
             nKeepVariables = nKeepVariables,
-            Covariates3step = Covariates3step)
+            namesKeepVariables = namesKeepVariables)
 
           # Perform LC for 1- and 2-classes
           shell(paste0(LG, " LCT", preC[iCC],".lgs /b"))
@@ -204,7 +204,7 @@ LCGT = function(dataDir,
           ######## Retrieve Results ######
           ################################
           resultsTemp = readLines(paste0("LCT", preC[iCC],".lst"))
-          outTemp = getOutput(resultsTemp, Hclass, maxClassSplit2, CC = preC[iCC],
+          outTemp = getOutputLCGT(resultsTemp, Hclass, maxClassSplit2, CC = preC[iCC],
                               Ntot = Ntot, stopCriterium = stopCriterium, decreasing = decreasing,
                               levelsDependent = levelsDependent, nIndependent = nIndependent)
 
@@ -243,38 +243,6 @@ LCGT = function(dataDir,
   ######################################################
   ######## After while loop prepare some results #######
   ######################################################
-
-  # ### Global class proportions can be found in ClassppGlobal
-  # Classpp = out$Classpp[!apply(out$Classpp, 1, anyNA),]
-  # Classpp.matrix = t(Classpp)
-  # Classpp.numeric = as.numeric(Classpp.matrix)
-  # Classpp.numeric.names = character()
-  # for(l in 1:ncol(Classpp.matrix)){
-  #   Classpp.numeric.names = c(Classpp.numeric.names,
-  #                             paste0(
-  #                               colnames(Classpp.matrix)[l],
-  #                               1:nrow(Classpp.matrix)))
-  # }
-  # Missing = is.na(Classpp.numeric)
-  # Classpp.numeric = Classpp.numeric[!Missing]
-  # names(Classpp.numeric) = Classpp.numeric.names[!Missing]
-  #
-  # ClassppGlobal = Names.sub.Classes = numeric()
-  # for(i in 1:length(Classpp.numeric)){
-  #   if(nchar(names(Classpp.numeric)[i])>2){
-  #     Names.sub.Classes = numeric()
-  #     for(j in 1:(nchar(names(Classpp.numeric)[i])-2)){
-  #       Names.sub.Classes [j] =
-  #         substr(names(Classpp.numeric)[i], 1, nchar(names(Classpp.numeric)[i]) - j)
-  #     }
-  #     ClassppGlobal[i] =
-  #       prod(c(Classpp.numeric[i], Classpp.numeric[Names.sub.Classes]))
-  #   } else{
-  #     ClassppGlobal[i] =
-  #       Classpp.numeric[i]
-  #   }
-  # }
-  # names(ClassppGlobal) = names(Classpp.numeric)
 
   ClassppGlobal = computeGlobalCpp(ClassProportions = out$Classpp,
                                    Splits = splitsClasses,
@@ -320,238 +288,13 @@ LCGT = function(dataDir,
   names(results) = c("Names", "IC", "Splits", "ParametersClassProportions", "ClassProportions", "ParametersTimepoints",
                      "Posteriors", "Splitpoints", "ClassppGlobal", "Names.Split.Classes", "Final.Classes",
                      "Ntot", "Names.clean")
+  class(results) = "LCT"
   setwd(mainDir)
   return(results)
 
 }
 
-makeNewSyntaxLCGT = function(dataDir,
-                             weight,
-                             independent,
-                             dependent,
-                             caseid,
-                             mLevelsLGindependent,
-                             mLevelsLGdependent,
-                             sets = 16,
-                             iterations = 50){
 
-  newSyntaxToBe = capture.output(cat(paste("
-//LG5.1//
-version = 5.1
-infile '", dataDir,"'
-
-model
-options
-   maxthreads=all;
-   algorithm
-      tolerance=1e-008 emtolerance=0,01 emiterations=250 nriterations=50;
-   startvalues
-      seed=0 sets=", sets," tolerance=1e-005 iterations=", iterations,";
-   bayes
-      categorical=1 variances=1 latent=1 poisson=1;
-   montecarlo
-      seed=0 sets=0 replicates=500 tolerance=1e-008;
-   quadrature  nodes=10;
-   missing  includeall;
-   output
-      parameters=first estimatedvalues=model
-      write
-variables
-   caseid ", caseid,";
-   caseweight ", weight,";
-   dependent;
-   independent;
-   latent
-      Cluster nominal 1;
-equations
-   Cluster <- 1;
-end model
-")))
-
-
-  newSyntaxToBe[grep("\\bdependent\\b", newSyntaxToBe)] =
-    capture.output(cat(paste0("   dependent ", paste(dependent, mLevelsLGdependent, collapse = ", "), ";", sep = "")))
-  newSyntaxToBe[grep("\\bindependent\\b", newSyntaxToBe)] =
-    capture.output(cat(paste0("   independent ", paste(independent, mLevelsLGindependent, collapse = ", "), ";", sep = "")))
-
-  indSyntax = character()
-  for(idxInd in 1:length(independent)){
-    indSyntax[idxInd] = paste0("+ ", independent[idxInd], " | Cluster")
-  }
-
-  newSyntaxToBe[length(newSyntaxToBe)] = paste0(dependent, "<- 1 | Cluster",
-                                                paste0(indSyntax, collapse = ""),";")
-
-  newSyntaxToBe[length(newSyntaxToBe) + 1] = "end model"
-  newSyntaxToBe[length(newSyntaxToBe) + 1] = ""
-  return(newSyntaxToBe)
-}
-
-makeSyntax = function(dataDir,
-                      Hclass,
-                      syntax,
-                      maxClassSplit1,
-                      nKeepVariables,
-                      Covariates3step,
-                      CC = 0) {
-
-  syntax[grep("infile", syntax)] = capture.output(cat(paste0("infile \'", dataDir, "'")))
-  syntax[grep("write", syntax)] =  paste0(
-    "write = 'H", Hclass, "c", CC, "_sol", 1, ".csv'
-    writeestimatedvalues='ev", CC, "_sol", 1, ".txt'
-    outfile 'H", Hclass, "c", CC, "_sol", 1, ".txt' classification ",
-    ifelse(nKeepVariables>0,
-           paste0("keep ", paste0(Covariates3step, collapse = ", ")),
-           ""),";"
-  )
-
-  # lm is the number of lines of one model.
-  lm = which(syntax == "end model")[1] - which(syntax == "model")[1]
-  syntaxModel = syntax[which(syntax == "model") :which(syntax == "end model")]
-  newSyntax = syntax
-
-  for(nClassSplit in 2:maxClassSplit1){
-    # ls = length(newSyntax)
-    newSyntax = c(newSyntax, syntaxModel)
-    newSyntax[grep("write", newSyntax)][nClassSplit] =  paste0(
-      "write = 'H", Hclass, "c", CC, "_sol", nClassSplit, ".csv'
-      writeestimatedvalues='ev", CC, "_sol", nClassSplit, ".txt'
-      outfile 'H", Hclass, "c", CC, "_sol", nClassSplit, ".txt' classification ",
-      ifelse(nKeepVariables>0,
-             paste0("keep ", paste0(Covariates3step, collapse = ", ")),
-             ""),";"
-    )
-    newSyntax[grep("Cluster nominal", newSyntax)][nClassSplit] = paste0("      Cluster nominal ", nClassSplit, ";")
-  }
-
-  write.table(newSyntax, paste0("LCT", CC, ".lgs"), row.names = FALSE, quote = FALSE, col.names = FALSE)
-}
-
-getOutput = function(resultsTemp, Hclass, maxClassSplit1,
-                     CC = 0, Ntot = Ntot, stopCriterium = stopCriterium,
-                     decreasing = TRUE, levelsDependent = levelsDependent,
-                     nIndependent = nIndependent){
-
-  ## What is the lowest Information Criterium?
-  LL = helpFun(resultsTemp, "Log-likelihood \\(LL\\)")
-  Npar = helpFun(resultsTemp, "Npar")[-1]
-  # Ntot = helpFun(resultsTemp, "Number of cases")
-
-  names(LL) = 1:maxClassSplit1
-  BIC = -2 * LL + log(Ntot) * Npar
-  AIC = -2 * LL + 2 * Npar
-  AIC3 = -2 * LL + 3 * Npar
-
-  IC = matrix(list(LL, BIC, AIC, AIC3), ncol = 4,
-              dimnames = list(CC, c("LL", "BIC", "AIC", "AIC3")))
-
-  solution = which.min(IC[[1, grep(stopCriterium, colnames(IC))]])
-
-  ncolCSV = max(count.fields(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"), sep = ","))
-
-  csvTemp = read.table(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"),
-                       header = FALSE, col.names = paste0("V",seq_len(ncolCSV)), sep =",", fill = TRUE)
-
-  ### DummyFirst coding parameters
-  rowParms = grep("Parameters", csvTemp[,5])
-  Parms.temp = as.numeric(as.character(csvTemp[
-    rowParms,-c(1:5)][
-      !is.na(csvTemp[rowParms,-c(1:5)])]))
-
-  Parms.cpp.temp = c(0, Parms.temp[1:(solution - 1)])
-
-  r1 = matrix(1:((levelsDependent - 1)*solution), levelsDependent - 1, solution)
-  r2 = matrix((1 + (levelsDependent - 1)*solution):
-                ((levelsDependent - 1)*solution + nIndependent*solution),
-              nIndependent, solution, byrow = TRUE)
-  r12 = rbind(r1, r2)
-  Parms.time.unordered = Parms.temp[-c(1:(solution - 1))][r12]
-  dim(Parms.time.unordered) = dim(r12) # maak er een matrix van met de juiste dimensies
-  Parms.time.unordered = rbind(0, Parms.time.unordered)
-
-  rowEV = grep("EstimatedValues", csvTemp[,5])
-  Classpp.temp = csvTemp[rowEV, -c(1:5)][1:solution]
-
-  order.Classpp = order(Classpp.temp, decreasing = decreasing)
-  Classpp = as.matrix(sort(Classpp.temp, decreasing = decreasing))
-  Parms.cpp = t(as.matrix(Parms.cpp.temp[order.Classpp]))
-  Parms.time = as.matrix(Parms.time.unordered[,order.Classpp])
-
-  colnames(Parms.time) = paste0(CC, 1:solution)
-  colnames(Classpp) = colnames(Parms.cpp) = 1:solution
-  rownames(Classpp) = rownames(Parms.cpp) = CC
-
-  # Posteriors
-  Post.temp = read.delim(paste0("H", Hclass, "c", CC, "_sol", solution, ".txt"),
-                         dec = ",")
-  Post.unordered = Post.temp[,(ncol(Post.temp) - (solution + 1)): (ncol(Post.temp) - 1)]
-  Post = Post.unordered[c(1, order.Classpp + 1)]
-  colnames(Post) = c(paste0("W_", CC), paste0("Post_", CC, 1:solution))
-
-  ICtemp = Map(helpFun,
-               x = list(resultsTemp),
-               greplIdx = list("Entr",
-                               "Classification log-likelihood",
-                               "CLC",
-                               "AWE",
-                               "ICL-BIC",
-                               "L-squared",
-                               "X-squared",
-                               "Cressie-Read"),
-               idx = list(seq(1, 2 * maxClassSplit1, 2),
-                          1:maxClassSplit1,
-                          1:maxClassSplit1,
-                          1:maxClassSplit1,
-                          1:maxClassSplit1,
-                          1:maxClassSplit1,
-                          1:maxClassSplit1,
-                          1:maxClassSplit1)
-  )
-
-  IC = cbind(IC, matrix(ICtemp, nrow = 1,
-                        dimnames = list(NULL,
-                                        c("Entropy", "CL", "CLC", "AWE",
-                                          "ICL-BIC", "Lsquared", "Xsquared", "CR"))))
-
-  toReturn = list(IC = IC, Parms.cpp = Parms.cpp, Classpp = Classpp,  #rbind
-                  Parms.time = Parms.time, Post = Post, #cbind
-                  solution = solution)
-  return(toReturn)
-}
-
-computeGlobalCpp = function(ClassProportions, Splits, Splitpoints){
-
-  # cpp = res$ClassProportions
-  cpp = ClassProportions
-  cpp = t(apply(cpp, 1, as.numeric))
-  # Splits = res$Splits
-  # Splitpoints = res$Splitpoints
-
-  sizeAllSplits = unlist(Splits)[unlist(Splits)>1]
-  allSplitClasses = unlist(sapply(1:length(sizeAllSplits),
-                                  function(i){paste0(Splitpoints[i], 1:sizeAllSplits[i])}
-  ))
-
-  cppToBe = cpp
-  splitsCpp = rownames(cpp)
-  names(cppToBe) = paste0(0, 1:length(cppToBe))
-
-  for(row in 2:nrow(cpp)){
-    ncharSplit = nchar(splitsCpp[row])
-
-    oldRow = substr(splitsCpp[row], 1, ncharSplit - 1)
-    newCol = as.numeric(substr(splitsCpp[row], ncharSplit, ncharSplit))
-    cppToBe[row,] = cppToBe[oldRow,newCol] * cppToBe[row,]
-  }
-  cppGtemp = as.numeric(t(cppToBe))
-  tempNames = expand.grid(splitsCpp, 1:ncol(cpp))
-  names(cppGtemp) = apply(
-    tempNames[order(tempNames[,1]),],
-    1, paste, collapse="")
-
-  cppGtoReturn = cppGtemp[allSplitClasses]
-  return(cppGtoReturn)
-}
 
 
 helpFun = function(x, greplIdx, idx = NULL) {
