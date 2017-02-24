@@ -1,6 +1,6 @@
 Package: LCTpackage
 Type: Package
-Title: Estimate a Latent Class Tree model with test Latent GOLD 5.1
+Title: Estimate a Latent Class Tree model with Latent GOLD 5.1
 Version: 0.1.0
 Author: Mattis van den Bergh
 Maintainer: Mattis van den Bergh <mattisvdbergh@gmail.com>
