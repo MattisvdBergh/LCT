@@ -1,8 +1,13 @@
-getOutputLCT = function(resultsTemp, Hclass, maxClassSplit1, CC = 0,
-                        Ntot = Ntot, stopCriterium = stopCriterium,
-                        itemNames = itemNames, decreasing = TRUE,
-                        mLevelsLGdependent = mLevelsLGdependent, mLevels = mLevels,
-                        measurementLevels = measurementLevels){
+getOutputLCT = function(resultsTemp,
+                        Hclass,
+                        maxClassSplit1,
+                        CC = 0,
+                        Ntot = Ntot,
+                        stopCriterium = stopCriterium,
+                        itemNames = itemNames,
+                        decreasing = TRUE,
+                        mLevels = mLevels,
+                        sizeMlevels = sizeMlevels){
 
   ## What is the lowest Information Criterium?
   LL = helpFun(resultsTemp, "Log-likelihood \\(LL\\)")
@@ -18,9 +23,9 @@ getOutputLCT = function(resultsTemp, Hclass, maxClassSplit1, CC = 0,
 
   solution = which.min(IC[[1, grep(stopCriterium, colnames(IC))]])
 
-  ncolCSV = max(count.fields(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"), sep = ","))
+  ncolCSV = max(utils::count.fields(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"), sep = ","))
 
-  csvTemp = read.table(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"),
+  csvTemp = utils::read.table(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"),
                        header = FALSE, col.names = paste0("V",seq_len(ncolCSV)), sep =",", fill = TRUE)
 
   rowEV = grep("EstimatedValues", csvTemp[,5])
@@ -36,19 +41,19 @@ getOutputLCT = function(resultsTemp, Hclass, maxClassSplit1, CC = 0,
   evTemp = csvTemp[rowEV,-c(1:(5 + solution))]
   evTemp = evTemp[!is.na(evTemp)]
 
-  ordVar = which(mLevelsLGdependent == "ordinal")
-  conVar = which(mLevelsLGdependent == "continuous")
+  ordVar = which(mLevels == "ordinal")
+  conVar = which(mLevels == "continuous")
 
   count = 1
   EVtemp2 = matrix(, nrow = 0, ncol = solution)
   for(idxVar in seq_along(itemNames)){
     if(idxVar %in% ordVar){
-      EVtemp = matrix(evTemp[count : (count + (mLevels[idxVar] * solution) - 1)],
+      EVtemp = matrix(evTemp[count : (count + (sizeMlevels[idxVar] * solution) - 1)],
                       ncol = solution)
-      rownames(EVtemp) = paste0(itemNames[idxVar], ".", 1:measurementLevels[[idxVar]])
+      rownames(EVtemp) = paste0(itemNames[idxVar], ".", 1:sizeMlevels[[idxVar]])
       EVtemp2 = rbind(EVtemp2, EVtemp)
 
-      count = count + (mLevels[idxVar] * solution)
+      count = count + (sizeMlevels[idxVar] * solution)
     }
     if(idxVar %in% conVar){
       EVtemp = matrix(evTemp[count : (count + solution - 1)],
@@ -69,13 +74,13 @@ getOutputLCT = function(resultsTemp, Hclass, maxClassSplit1, CC = 0,
   colnames(EV) = paste0(CC, 1:solution)
 
   # Posteriors
-  Post.temp = read.delim(paste0("H", Hclass, "c", CC, "_sol", solution, ".txt"),
+  Post.temp = utils::read.delim(paste0("H", Hclass, "c", CC, "_sol", solution, ".txt"),
                          dec = ",")
   Post.unordered = Post.temp[,(ncol(Post.temp) - (solution + 1)): (ncol(Post.temp) - 1)]
   Post = Post.unordered[c(1, order.Classpp + 1)]
   colnames(Post) = c(paste0("W_", CC), paste0("Post_", CC, 1:solution))
 
-  if(any(mLevelsLGdependent == "continuous")){
+  if(any(mLevels == "continuous")){
     ICtemp = Map(helpFun,
                  x = list(resultsTemp),
                  greplIdx = list("Entr",

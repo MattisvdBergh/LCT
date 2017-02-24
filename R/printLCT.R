@@ -20,29 +20,11 @@
 #' @export
 print.LCT <- function(x, ...){
   cat("tree object","\n\n")
-  for(idxLevels in 1:(length(x$Names.clean) - 1)){
-    cat("level",idxLevels,": ", x$Names.clean[[idxLevels]], "\n")
+  for(idxLevels in 1:(length(x$treeSetup$cleanNames) - 1)){
+    cat("level",idxLevels,": ", x$treeSetup$cleanNames[[idxLevels]], "\n")
   }
   cat("Class Sizes final level:\n")
-  print(x$ClassppGlobal[x$finalClasses])
-  qgraph::qgraph(computeEdges(x), layout = igraph::layout_as_tree, labels = rownames(x$ClassProportions))
+  print(x$splitInfo$CppG[x$treeSetup$finalClasses])
 }
 
-makeCleanNames = function(names, finalClasses){
 
-  names.classes.clean = names
-  for(k in 2:length(names)){
-    row.classes = names[[k]]
-    classbranches = matrix(, nrow = k - 1, ncol = length(row.classes))
-    for (j in 1:length(row.classes)){
-      classbranch = character()
-      for(i in 2:k){classbranch[i - 1] = substr(row.classes[j], 1, i)}
-      classbranches[,j] = classbranch}
-    classbranchesTF = apply(classbranches, 2, function(x){x%in%finalClasses})
-    if(k == 2){
-      IndexChangedClasses = which(classbranchesTF)
-    } else {IndexChangedClasses = which(classbranchesTF, arr.ind = TRUE)[,2]}
-    names.classes.clean[[k]][IndexChangedClasses] = classbranches[which(classbranchesTF, arr.ind = TRUE)]
-  }
- return(names.classes.clean)
-}

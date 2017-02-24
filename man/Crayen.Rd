@@ -3,7 +3,7 @@
 \docType{data}
 \name{Crayen}
 \alias{Crayen}
-\title{Arabidopsis QTL data on gravitropism}
+\title{Dataset on wel being}
 \format{An object of}
 \source{
 \href{http://qtlarchive.org/db/q?pg=projdetails&proj=moore_2013b}{QTL Archive}
@@ -18,7 +18,7 @@ Cvi). The outcome is the root tip angle (in degrees) at two-minute
 increments over eight hours.
 }
 \references{
-Moore et al. (2013) Genetics 195:1077-1086
+Moore et al. (2013) Genetics 195:1077-1086,
 (\href{http://www.ncbi.nlm.nih.gov/pubmed/23979570}{PubMed})
 }
 \keyword{datasets}

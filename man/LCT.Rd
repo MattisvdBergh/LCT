@@ -4,20 +4,23 @@
 \alias{LCT}
 \title{Estimate a Latent Class Tree model}
 \usage{
-LCT(dataDir, LG, LGS = NULL, itemNames = NULL, mLevels = NULL,
+LCT(Dataset, LG, LGS = NULL, itemNames = NULL, mLevels = NULL,
   weight = "weight", resultsName = "", maxClassSplit1 = 2,
   maxClassSplit2 = 2, decreasing = TRUE, stopCriterium = "BIC",
   minSampleSize = 5, nKeepVariables = 0, namesKeepVariables = NULL,
   sets = 16, iterations = 50)
 }
 \arguments{
-\item{dataDir}{directory of the data or a dataframe with the data}
+\item{Dataset}{A dataframe with the data or
+the filepath of the data.}
 
-\item{LG}{directory of the Latent GOLD executable}
+\item{LG}{Filepath of the Latent GOLD executable}
 
-\item{LGS}{directory of Latent GOLD syntax for a model with 1- and 2-class splits}
+\item{LGS}{Filepath of Latent GOLD syntax for a model with 1- and 2-class splits}
 
-\item{itemNames}{The names of the indicators. If this is not given, the rownames of the datafile will be used.}
+\item{itemNames}{The names of the indicators. If this is not given, all column names of the datafile will be used.}
+
+\item{mLevels}{A character vector being either "ordinal" or "continuous" to indicate the measurement level of each variable. It is required when LGS is specified.}
 
 \item{weight}{Name of the variable with the weights. When all records are unique observations, this should be one for every observation.}
 
@@ -35,12 +38,22 @@ LCT(dataDir, LG, LGS = NULL, itemNames = NULL, mLevels = NULL,
 
 \item{nKeepVariables}{Number of variables to be kept if one wants to explore the results with external variables.}
 
-\item{measurementLevels}{A character vector being either ordinal or continuous to indicate the measurement level of each variable. It is required when LGS is specified.}
+\item{namesKeepVariables}{Number of variables to be kept if one wants to explore the results with external variables.}
+
+\item{sets}{Name of the variable with the weights. When all records are unique observations, this should be one for every observation.}
+
+\item{iterations}{A character vector being either ordinal or continuous to indicate the measurement level of each variable. It is required when LGS is specified.}
 }
 \value{
-None
+Results of a Latent Class Tree analysis in an object of class \code{'LCT'}, which is a named list with two named lists.
+The first list contains information on the setup of the tree and the second list contains information on every split.
 }
 \description{
 Estimate a Latent Class Tree model with Latent GOLD 5.1
+}
+\details{
+The \code{LCT} function constructs a LCT model by sequentially estimating 2-class models with Latent GOLD 5.1.
+This can be done automatically for standard models, but for more complex models a customized Latent GOLD syntax can be provided.
+The model size of the root can be increased with \code{maxClassSplit1} and the remaining splits with \code{maxClassSplit2}.
 }
 

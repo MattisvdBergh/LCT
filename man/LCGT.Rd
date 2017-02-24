@@ -2,9 +2,9 @@
 % Please edit documentation in R/LCGT.R
 \name{LCGT}
 \alias{LCGT}
-\title{Illustration of crayon colors}
+\title{Estimate a Latent Class Growth Tree model}
 \usage{
-LCGT(dataDir, LG, LGS = NULL, dependent = NULL, levelsDependent = 2,
+LCGT(Dataset, LG, LGS = NULL, dependent = NULL, levelsDependent = 2,
   independent = NULL, caseid = NULL, weight = "weight",
   resultsName = "", maxClassSplit1 = 2, maxClassSplit2 = 2,
   decreasing = TRUE, stopCriterium = "BIC", minSampleSize = 5,
@@ -12,16 +12,56 @@ LCGT(dataDir, LG, LGS = NULL, dependent = NULL, levelsDependent = 2,
   iterations = 50)
 }
 \arguments{
-\item{method2order}{method to order}
+\item{Dataset}{A dataframe with the data or
+the filepath of the data.}
 
-\item{cex}{character expansion for the text}
+\item{LG}{Filepath of the Latent GOLD executable}
 
-\item{mar}{margin paramaters; vector of len}
+\item{LGS}{Filepath of Latent GOLD syntax for a model with 1- and 2-class splits}
+
+\item{dependent}{The name of the dependent variable.}
+
+\item{levelsDependent}{The number of options of response options of the dependent variable.
+Should be one for a continuous dependent variable.}
+
+\item{independent}{Column names of the independent variables in the dataset}
+
+\item{caseid}{Name of the variable that indicates different repsondents}
+
+\item{weight}{Name of the variable with the weights. When all records are unique observations,
+this should be 1 for every observation.}
+
+\item{resultsName}{Name of a folder which will be created in the working directory and
+contains all results by Latent GOLD.}
+
+\item{maxClassSplit1}{Maximum size of the first split of the tree. Will be assessed with the criterion given in stopCriterium. Defaults to two.}
+
+\item{maxClassSplit2}{Maximum size of each split after the first split of the tree. Defaults to two.}
+
+\item{decreasing}{Whether the ordering of classes should be decreasing or not. Defaults to TRUE.}
+
+\item{stopCriterium}{Criterium to decide on a split. Can be "LL" (logLikelihood), "AIC" or "BIC".}
+
+\item{minSampleSize}{Minimum sample size of a class. If this is below 1, a probability of the total sample size is used.}
+
+\item{nKeepVariables}{Number of variables to be kept if one wants to explore the results with external variables.}
+
+\item{namesKeepVariables}{Number of variables to be kept if one wants to explore the results with external variables.}
+
+\item{sets}{Name of the variable with the weights. When all records are unique observations, this should be one for every observation.}
+
+\item{iterations}{A character vector being either ordinal or continuous to indicate the measurement level of each variable. It is required when LGS is specified.}
 }
 \value{
-None
+Results of a Latent Class Tree analysis in an object of class \code{'LCT'}, which is a named list with two named lists.
+The first list contains information on the setup of the tree and the second list contains information on every split.
 }
 \description{
-Illustration of crayon colors
+Estimate a Latent Class Growth Tree model with Latent GOLD 5.1
+}
+\details{
+The \code{LCT} function constructs a LCT model by sequentially estimating 2-class models with Latent GOLD 5.1.
+This can be done automatically for standard models, but for more complex models a customized Latent GOLD syntax can be provided.
+The model size of the root can be increased with \code{maxClassSplit1} and the remaining splits with \code{maxClassSplit2}.
 }
 

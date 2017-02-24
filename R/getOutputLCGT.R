@@ -18,9 +18,9 @@ getOutputLCGT = function(resultsTemp, Hclass, maxClassSplit1,
 
   solution = which.min(IC[[1, grep(stopCriterium, colnames(IC))]])
 
-  ncolCSV = max(count.fields(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"), sep = ","))
+  ncolCSV = max(utils::count.fields(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"), sep = ","))
 
-  csvTemp = read.table(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"),
+  csvTemp = utils::read.table(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"),
                        header = FALSE, col.names = paste0("V",seq_len(ncolCSV)), sep =",", fill = TRUE)
 
   ### DummyFirst coding parameters
@@ -53,7 +53,7 @@ getOutputLCGT = function(resultsTemp, Hclass, maxClassSplit1,
   rownames(Classpp) = rownames(Parms.cpp) = CC
 
   # Posteriors
-  Post.temp = read.delim(paste0("H", Hclass, "c", CC, "_sol", solution, ".txt"),
+  Post.temp = utils::read.delim(paste0("H", Hclass, "c", CC, "_sol", solution, ".txt"),
                          dec = ",")
   Post.unordered = Post.temp[,(ncol(Post.temp) - (solution + 1)): (ncol(Post.temp) - 1)]
   Post = Post.unordered[c(1, order.Classpp + 1)]

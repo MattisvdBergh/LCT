@@ -2,23 +2,23 @@
 % Please edit documentation in R/ExploreTree.R
 \name{exploreTree}
 \alias{exploreTree}
-\title{Explore a Latent Class Tree model}
+\title{3-step method Latent Class Trees}
 \usage{
-exploreTree(res, syntaxThree = NULL, mLevelsCovariates = c(1, 2),
+exploreTree(resTree, LG = LG, syntaxExpl = NULL, sizeMlevels = c(2, 1),
   method = "bch", dirTreeResults = getwd(), ResultsFolder = "exploreTree",
-  Covariates = c("age", "sex"), mLevelsLGdependent = c("continuous",
-  "ordinal"), weight = "weight")
+  Covariates = c("age", "sex"), mLevels = c("ordinal", "continuous"),
+  weight = "weight")
 }
 \arguments{
-\item{res}{Treeobject from}
+\item{resTree}{A Latent Class Tree object}
+
+\item{LG}{Path to the Latent GOLD executable}
+
+\item{syntaxExpl}{Directory of Latent GOLD syntax for a model for the 3-step analysis. This can be used for more complex models, but}
 
 \item{dirTreeResults}{Maximum size of the first split of the tree. Will be assessed with the criterion given in stopCriterium. Defaults to two.}
 
 \item{ResultsFolder}{folder with results}
-
-\item{LG}{Path to the Latent GOLD executable}
-
-\item{levelsCovariates}{Vector with the levels of each of the covariates (1 = continuous, 1< = ordinal)}
 
 \item{measurementLevels}{Whether the ordering of classes should be decreasing or not. Defaults to TRUE.}
 }
@@ -26,6 +26,6 @@ exploreTree(res, syntaxThree = NULL, mLevelsCovariates = c(1, 2),
 None
 }
 \description{
-Explore a Latent Class Tree model with Latent GOLD 5.1
+Compute the relation of some covariates with each class by use of the 3-step method.
 }
 

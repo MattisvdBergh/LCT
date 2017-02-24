@@ -1,10 +1,11 @@
 Package: LCTpackage
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Estimate a Latent Class Tree model with Latent GOLD 5.1
 Version: 0.1.0
 Author: Mattis van den Bergh
 Maintainer: Mattis van den Bergh <mattisvdbergh@gmail.com>
-Description: More about what it does (maybe more than one line)
-License: What license is it under?
+Description: A Latent Class Tree model is estimated with Latent GOLD 5.1. A 2-class split is performed on the data (can be increased by adjusting maxClassSplit1) and a new dataset is constructed for each class by multiplying the original weights with the posterior membership probabilities. Subsequently the procedure is repeated for the new classes and this goes on untill no classes are split further.
+License:  GPL (>= 2)
+Imports: igraph, qgraph, utils
 LazyData: TRUE
 RoxygenNote: 5.0.1

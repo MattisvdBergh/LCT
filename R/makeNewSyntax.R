@@ -1,7 +1,11 @@
-makeNewSyntax = function(dataDir, itemNames, weight, mLevels,
-                         sets = 16, iterations = 50){
+makeNewSyntax = function(dataDir,
+                         itemNames,
+                         weight,
+                         mLevels,
+                         sets = 16,
+                         iterations = 50){
 
-  newSyntaxToBe = capture.output(cat(paste("
+  newSyntaxToBe = utils::capture.output(cat(paste("
 //LG5.1//
 version = 5.1
 infile '", dataDir,"'
@@ -26,7 +30,7 @@ variables
    caseweight ", weight,";
    dependent;
    latent
-      Cluster nominal 1;
+   Cluster nominal 1;
 equations
    Cluster <- 1;
 end model
@@ -34,7 +38,7 @@ end model
 
 
   newSyntaxToBe[grep("dependent", newSyntaxToBe)] =
-    capture.output(cat(paste0("   dependent ", paste(itemNames, mLevels, collapse = ", "), ";", sep = "")))
+    utils::capture.output(cat(paste0("   dependent ", paste(itemNames, mLevels, collapse = ", "), ";", sep = "")))
 
   newSyntaxToBe[length(newSyntaxToBe)] = paste0("   ", itemNames[1]," <- 1 + Cluster;")
   for(idxVar in 2:length(itemNames)){

@@ -9,18 +9,18 @@
 #' @export
 relImpr = function(x, criterion = "LL"){
 
-  allImprovement = matrix(, nrow = length(x$IC[,criterion[1]][[1]]) - 2,
+  allImprovement = matrix(, nrow = length(x$splitInfo$IC[,criterion[1]][[1]]) - 2,
                           ncol = length(criterion))
 
   for(idxCrit in seq_along(criterion)){
-    nClass = length(x$IC[,criterion[idxCrit]][[1]])
+    nClass = length(x$splitInfo$IC[,criterion[idxCrit]][[1]])
     improvement = numeric()
     counter = 1
     for(i in 3:nClass){
-      improvement[counter] = (x$IC[,criterion[idxCrit]][[1]][i] -
-                                x$IC[,criterion[idxCrit]][[1]][i - 1])/
-        (x$IC[,criterion[idxCrit]][[1]][2] -
-           x$IC[,criterion[idxCrit]][[1]][1])
+      improvement[counter] = (x$splitInfo$IC[,criterion[idxCrit]][[1]][i] -
+                                x$splitInfo$IC[,criterion[idxCrit]][[1]][i - 1])/
+        (x$splitInfo$IC[,criterion[idxCrit]][[1]][2] -
+           x$splitInfo$IC[,criterion[idxCrit]][[1]][1])
       counter = counter + 1
     }
     allImprovement[,idxCrit] = improvement

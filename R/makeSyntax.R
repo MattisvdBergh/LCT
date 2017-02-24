@@ -1,7 +1,12 @@
-makeSyntax = function(dataDir, Hclass, syntax, maxClassSplit1,
-                      nKeepVariables, namesKeepVariables, CC = 0) {
+makeSyntax = function(dataDir,
+                      Hclass,
+                      syntax,
+                      maxClassSplit1,
+                      nKeepVariables,
+                      namesKeepVariables,
+                      CC = 0) {
 
-  syntax[grep("infile", syntax)] = capture.output(cat(paste0("infile \'", dataDir, "'")))
+syntax[grep("infile", syntax)] = utils::capture.output(cat(paste0("infile \'", dataDir, "'")))
   syntax[grep("write", syntax)] =  paste0(
     "write = 'H", Hclass, "c", CC, "_sol", 1, ".csv'
     writeestimatedvalues='ev", CC, "_sol", 1, ".txt'
@@ -29,5 +34,5 @@ makeSyntax = function(dataDir, Hclass, syntax, maxClassSplit1,
     newSyntax[grep("Cluster nominal", newSyntax)][nClassSplit] = paste0("      Cluster nominal ", nClassSplit, ";")
   }
 
-  write.table(newSyntax, paste0("LCT", CC, ".lgs"), row.names = FALSE, quote = FALSE, col.names = FALSE)
+  utils::write.table(newSyntax, paste0("LCT", CC, ".lgs"), row.names = FALSE, quote = FALSE, col.names = FALSE)
 }

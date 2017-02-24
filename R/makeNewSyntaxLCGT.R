@@ -8,7 +8,7 @@ makeNewSyntaxLCGT = function(dataDir,
                              sets = 16,
                              iterations = 50){
 
-  newSyntaxToBe = capture.output(cat(paste("
+  newSyntaxToBe = utils::capture.output(cat(paste("
 //LG5.1//
 version = 5.1
 infile '", dataDir,"'
@@ -43,9 +43,9 @@ end model
 
 
   newSyntaxToBe[grep("\\bdependent\\b", newSyntaxToBe)] =
-    capture.output(cat(paste0("   dependent ", paste(dependent, mLevelsLGdependent, collapse = ", "), ";", sep = "")))
+    utils::capture.output(cat(paste0("   dependent ", paste(dependent, mLevelsLGdependent, collapse = ", "), ";", sep = "")))
   newSyntaxToBe[grep("\\bindependent\\b", newSyntaxToBe)] =
-    capture.output(cat(paste0("   independent ", paste(independent, mLevelsLGindependent, collapse = ", "), ";", sep = "")))
+    utils::capture.output(cat(paste0("   independent ", paste(independent, mLevelsLGindependent, collapse = ", "), ";", sep = "")))
 
   indSyntax = character()
   for(idxInd in 1:length(independent)){
