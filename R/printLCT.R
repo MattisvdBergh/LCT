@@ -18,99 +18,13 @@
 #'
 #' @return None
 #' @export
-print.LCT <- function(res, ...){
+print.LCT <- function(x, ...){
   cat("tree object","\n\n")
-  for(idxLevels in 1:(length(res$Names.clean) - 1)){
-    cat("level",idxLevels,": ", res$Names.clean[[idxLevels]], "\n")
+  for(idxLevels in 1:(length(x$treeSetup$cleanNames) - 1)){
+    cat("level",idxLevels,": ", x$treeSetup$cleanNames[[idxLevels]], "\n")
   }
   cat("Class Sizes final level:\n")
-  print(res$ClassppGlobal[res$finalClasses])
-  qgraph(computeEdges(res), layout = layout_as_tree, labels = rownames(res$ClassProportions))
-}
-
-computeEdges = function(res){
-  library(qgraph)
-  library(igraph)
-
-  cleanNames = res$Names.clean
-  Splits = res$Splits
-
-  counter1 = counter2 = 1
-  E = Enames = matrix(,0,2)
-  for(idxLevels in 1:(length(cleanNames) - 1)){
-    level1Temp = cleanNames[[idxLevels]]
-    pSplits = nchar(level1Temp) == max(nchar(level1Temp))
-    level2Temp = cleanNames[[idxLevels + 1]]
-    rSplits = Splits[[idxLevels]]>1
-
-    for(idxClasses in 1:length(level1Temp)){
-      if(pSplits[idxClasses]){
-        if(rSplits[idxClasses]){
-
-          splitClassesLogical = grepl(level1Temp[idxClasses], level2Temp)
-          counter2 = counter2 + cumsum(splitClassesLogical)[splitClassesLogical]
-
-          EnamestoBe = cbind(level1Temp[idxClasses], level2Temp[splitClassesLogical])
-          EtoBe = cbind(counter1, counter2)
-
-          counter1 = counter1 + 1
-          counter2 = max(EtoBe[,2])
-
-          E = rbind(E,EtoBe)
-          Enames = rbind(Enames, EnamestoBe)
-
-        } else {counter1 = counter1 + 1}
-      }}}
-  return(E)
-}
-
-computeGlobalCpp = function(res){
-
-  cpp = res$ClassProportions
-  cpp = t(apply(cpp, 1, as.numeric))
-
-  sizeAllSplits = unlist(res$Splits)[unlist(res$Splits)>1]
-  allSplitClasses = unlist(sapply(1:length(sizeAllSplits),
-                                  function(i){paste0(res$Splitpoints[i], 1:sizeAllSplits[i])}
-  ))
-
-  cppToBe = cpp
-  splitsCpp = rownames(cpp)
-  names(cppToBe) = paste0(0, 1:length(cppToBe))
-
-  for(row in 2:nrow(cpp)){
-    ncharSplit = nchar(splitsCpp[row])
-
-    oldRow = substr(splitsCpp[row], 1, ncharSplit - 1)
-    newCol = as.numeric(substr(splitsCpp[row], ncharSplit, ncharSplit))
-    cppToBe[row,] = cppToBe[oldRow,newCol] * cppToBe[row,]
-  }
-  cppGtemp = as.numeric(t(cppToBe))
-  tempNames = expand.grid(splitsCpp, 1:ncol(cpp))
-  names(cppGtemp) = apply(
-    tempNames[order(tempNames[,1]),],
-    1, paste, collapse="")
-
-  cppGtoReturn = cppGtemp[allSplitClasses]
-  return(cppGtoReturn)
+  print(x$splitInfo$CppG[x$treeSetup$finalClasses])
 }
 
 
-makeCleanNames = function(names, finalClasses){
-
-  names.classes.clean = names
-  for(k in 2:length(names)){
-    row.classes = names[[k]]
-    classbranches = matrix(, nrow = k - 1, ncol = length(row.classes))
-    for (j in 1:length(row.classes)){
-      classbranch = character()
-      for(i in 2:k){classbranch[i - 1] = substr(row.classes[j], 1, i)}
-      classbranches[,j] = classbranch}
-    classbranchesTF = apply(classbranches, 2, function(x){x%in%finalClasses})
-    if(k == 2){
-      IndexChangedClasses = which(classbranchesTF)
-    } else {IndexChangedClasses = which(classbranchesTF, arr.ind = TRUE)[,2]}
-    names.classes.clean[[k]][IndexChangedClasses] = classbranches[which(classbranchesTF, arr.ind = TRUE)]
-  }
- return(names.classes.clean)
-}

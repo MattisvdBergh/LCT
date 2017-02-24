@@ -1,141 +1,79 @@
-#' Explore a Latent Class Tree model
+#' 3-step method Latent Class Trees
 #'
-#' Explore a Latent Class Tree model with Latent GOLD 5.1
-#'
-#' @param res Treeobject from
+#' @param resTree A Latent Class Tree object
 #' @param LG Path to the Latent GOLD executable
-#' @param levelsCovariates Vector with the levels of each of the covariates (1 = continuous, 1< = ordinal)
+#' @param syntaxExpl Directory of Latent GOLD syntax for a model for the 3-step analysis. This can be used for more complex models, but
 #' @param measurementLevels Whether the ordering of classes should be decreasing or not. Defaults to TRUE.
 #' @param dirTreeResults Maximum size of the first split of the tree. Will be assessed with the criterion given in stopCriterium. Defaults to two.
 #' @param ResultsFolder folder with results
 #'
+#' @description Compute the relation of some covariates with each class by use of the 3-step method.
+#'
 #' @return None
 #' @export
-exploreTree = function(res,
-                       syntaxThree = NULL,
-                       mLevelsCovariates = c(1, 2),
+exploreTree = function(resTree,
+                       LG = LG,
+                       syntaxExpl = NULL,
+                       sizeMlevels = c(2, 1),
                        method = "bch",
                        dirTreeResults = getwd(),
                        ResultsFolder = "exploreTree",
                        Covariates = c("age", "sex"),
-                       mLevelsLGdependent = c("continuous", "ordinal"),
+                       mLevels = c("ordinal", "continuous"),
                        weight = "weight"){
   mainDir = getwd()
 
-  # unique splits
-  uSplits = res$Splitpoints
+  pSplits = resTree$treeSetup$parentClasses
+  Splits = resTree$treeSetup$Splits
+  namesClasses = resTree$treeSetup$Names
+
+  allSplits = unlist(Splits)
+  splitsLogical = allSplits>1
+  splitSizes = allSplits[splitsLogical]
+  hClasses = nchar(pSplits)
+  names(splitSizes) = pSplits
 
   # All files with posteriors
-  LdirPost = list()
-  allSplits = numeric()
-  for(i in 1:length(res$Splits)){
-    allSplits = c(allSplits, res$Splits[[i]])
-    LdirPost[[i]] = paste0("H", i,
-                           "c", res$Names[[i]],
-                           "_sol", res$Splits[[i]], ".txt")
-  }
-
-  # To determine which files of posteriors really belong to a split
-  LrealSplits = sapply(LdirPost, function(x){
-    nCharLevel = nchar(x)
-    substr(x, nCharLevel - 4, nCharLevel - 4) != 1
-  })
-
-  # Make a correction for all real splits
-  realSplitsLogical = unlist(LrealSplits)
-  dirPost = unlist(LdirPost)[realSplitsLogical]
-  realSplits = allSplits[realSplitsLogical]
-
-  # function to remove missings
-  rna = function(x){
-    x[!is.na(x)]
-  }
+  dirPost = paste0("H", hClasses,
+                   "c", pSplits,
+                   "_sol", splitSizes, ".txt")
 
   dir.create(file.path(getwd(), ResultsFolder), showWarnings = FALSE)
   setwd(file.path(mainDir, ResultsFolder))
 
-  if(is.null(syntaxThree)){
-    syntaxThree = makeNewSyntaxExplore(dataDir = dirPost[1],
-                                       mLevelsLGdependent = mLevelsLGdependent,
+  if(is.null(syntaxExpl)){
+    syntaxExpl = makeNewSyntaxExplore(dataDir = dirPost[1],
+                                       mLevels = mLevels,
                                        Covariates = Covariates)
   }
 
-  nClass = numeric()
-  EV = Wald = Profile = Parms = list()
 
-  # to run the three step
-  for(reps in 1:length(dirPost)){
+  Results3step = run3step(dirPost = dirPost,
+                          syntaxExpl = syntaxExpl,
+                          splitSizes = splitSizes,
+                          pSplits = pSplits,
+                          dirTreeResults = dirTreeResults)
 
-    syntaxThree[grep("infile", syntaxThree)] =
-      capture.output(cat(paste0("infile \'", dirTreeResults, "/", dirPost[reps], "'")))
-
-    syntaxThree[grep("write", syntaxThree)] =  paste0(
-      "write = 'Results", uSplits[reps], ".csv' writeestimatedvalues='ev", uSplits[reps], ".txt';")
-
-
-    ncharDirPost = nchar(strsplit(dirPost[reps], ".", fixed = TRUE)[[1]][1])
-    nClass[reps] = substr(dirPost[reps], ncharDirPost, ncharDirPost)
-    syntaxThreeTemp = sub("Cluster#1 Cluster#2", paste0("Cluster#", 1:nClass[reps], collapse = " "), syntaxThree)
-    syntaxDir = paste0("sThree", reps, ".lgs")
-    write.table(syntaxThreeTemp, syntaxDir, row.names = FALSE, quote = FALSE, col.names = FALSE)
-    shell(paste(LG, syntaxDir, "/b"))
-
-    ncolCSV = max(count.fields(paste0(
-      "results",
-      res$Splitpoints[reps],
-      ".csv"), sep = ","))
-
-    Results = read.table(paste0(
-      "results",
-      res$Splitpoints[reps],
-      ".csv"),
-      header = FALSE, col.names = paste0("V",seq_len(ncolCSV)), sep =",", fill = TRUE)
-
-    EV[[reps]] =  unique(read.table(paste0(
-      "ev",
-      res$Splitpoints[reps],
-      ".txt"), sep = ",", header = TRUE))
-
-    rowParms = which(Results[,5]=="Parameters")
-    rowWald = which(Results[,5]=="WaldStatistics")
-    rowProfile = which(Results[,5]=="Profile")
-    Wald[[reps]] = Results[rowWald,-c(1:5)]
-    Wald[[reps]] = rna(Wald[[reps]])
-    Parms[[reps]] = Results[rowParms,-c(1:5)]
-    Parms[[reps]] = rna(Parms[[reps]])
-    Profile[[reps]] = Results[rowProfile,-c(1:5)]
-    Profile[[reps]] = rna(Profile[[reps]])
-  }
-
-  nClassTotal = as.numeric(nClass[!is.na(nClass)])
-  WaldTotal = Wald[!sapply(Wald, is.null)]
-  ParmsTotal = Parms[!sapply(Parms, is.null)]
-  ProfileTotal = Profile[!sapply(Profile, is.null)]
-
-  names(nClassTotal) =
-    names(WaldTotal) =
-    names(ParmsTotal) =
-    names(ProfileTotal) = unlist(res$Names[-length(res$Names)])[realSplitsLogical]
-
-  toReturn = reformResults(nClassTotal = nClassTotal,
-                           ParmsTotal = ParmsTotal,
-                           ProfileTotal = ProfileTotal,
-                           EV = EV,
-                           WaldTotal = WaldTotal,
-                           mLevelsCovariates = mLevelsCovariates,
-                           mLevelsLGdependent = mLevelsLGdependent,
-                           Covariates = Covariates)
+  toReturn = reformResults(splitSizes = splitSizes,
+                           ParmsTotal = Results3step$ParmsTotal,
+                           ProfileTotal = Results3step$ProfileTotal,
+                           EV = Results3step$EV,
+                           WaldTotal = Results3step$WaldTotal,
+                           sizeMlevels = sizeMlevels,
+                           mLevels = mLevels,
+                           Covariates = Covariates,
+                           pSplits = pSplits)
   setwd(mainDir)
   return(toReturn)
 }
 
 makeNewSyntaxExplore = function(dataDir = dataDir,
                                 method = "bch",
-                                mLevelsLGdependent = mLevelsLGdependent,
+                                mLevels = mLevels,
                                 Covariates = Covariates,
                                 weight = "weight"){
 
-  syntaxExploreToBe = capture.output(cat(paste("
+  syntaxExploreToBe = utils::capture.output(cat(paste("
 //LG5.1//
 version = 5.1
 infile '", dataDir,"'
@@ -156,26 +94,109 @@ end model"
 )))
 
   syntaxExploreToBe[grep("dependent", syntaxExploreToBe)] =
-    capture.output(cat(paste0("   dependent ", paste(Covariates, mLevelsLGdependent, collapse = ", "), ";", sep = "")))
+    utils::capture.output(cat(paste0("   dependent ", paste(Covariates, mLevels, collapse = ", "), ";", sep = "")))
   syntaxExploreToBe[length(syntaxExploreToBe)] = paste0("   ", Covariates[1]," <- 1 + Cluster;")
   if(length(Covariates)>1){
   for(idxCov in 2:length(Covariates)){
     syntaxExploreToBe[length(syntaxExploreToBe) + 1] = paste0("   ", Covariates[idxCov]," <- 1 + Cluster;")
   }}
-  for(idxCovCont in which(mLevelsLGdependent == "continuous")){
+  for(idxCovCont in which(mLevels == "continuous")){
     syntaxExploreToBe[length(syntaxExploreToBe) + 1] = paste0("   ", Covariates[idxCovCont],";")
   }
   syntaxExploreToBe[length(syntaxExploreToBe) + 1] = "end model"
   return(syntaxExploreToBe)
 }
 
-reformResults = function(nClassTotal, ParmsTotal, ProfileTotal,
-                         EV, WaldTotal, mLevelsCovariates,
-                         mLevelsLGdependent, Covariates){
-  toReturn = list()
+run3step = function(dirPost,
+                    syntaxExpl,
+                    splitSizes,
+                    pSplits,
+                    dirTreeResults){
 
-  for(idxSplits in 1:length(nClassTotal)){
-    nclassTemp = nClassTotal[idxSplits]
+  EV = Wald = Profile = Parms = list()
+  # to run the three step
+  for(reps in 1:length(dirPost)){
+
+    syntaxExpl[grep("infile", syntaxExpl)] =
+      utils::capture.output(cat(paste0("infile \'", dirTreeResults, "/", dirPost[reps], "'")))
+
+    syntaxExpl[grep("write", syntaxExpl)] =  paste0(
+      "write = 'Results",
+      pSplits[reps],
+      ".csv' writeestimatedvalues='ev",
+      pSplits[reps],
+      ".txt';")
+
+    ncharDirPost = nchar(strsplit(dirPost[reps], ".", fixed = TRUE)[[1]][1])
+    syntaxExplTemp = sub("Cluster#1 Cluster#2",
+                         paste0("Cluster#",
+                                1:splitSizes[reps],
+                                collapse = " "),
+                         syntaxExpl)
+
+    syntaxDir = paste0("sThree", reps, ".lgs")
+    write.table(syntaxExplTemp,
+                syntaxDir,
+                row.names = FALSE,
+                quote = FALSE,
+                col.names = FALSE)
+
+    shell(paste(LG, syntaxDir, "/b"))
+
+    ncolCSV = max(count.fields(paste0("results",
+                                      pSplits[reps],
+                                      ".csv"), sep = ","))
+
+    Results = read.table(paste0("results",
+                                pSplits[reps],
+                                ".csv"),
+                         col.names = paste0("V",seq_len(ncolCSV)),
+                         header = FALSE, sep =",", fill = TRUE)
+
+    EV[[reps]] =  unique(read.table(paste0("ev",
+                                           pSplits[reps],
+                                           ".txt"),
+                                    sep = ",", header = TRUE))
+
+    # function to remove missings
+    rna = function(x){
+      x[!is.na(x)]
+    }
+
+    rowParms = which(Results[,5]=="Parameters")
+    rowWald = which(Results[,5]=="WaldStatistics")
+    rowProfile = which(Results[,5]=="Profile")
+    Wald[[reps]] = rna(Results[rowWald,-c(1:5)])
+    Parms[[reps]] = rna(Results[rowParms,-c(1:5)])
+    Profile[[reps]] = rna(Results[rowProfile,-c(1:5)])
+  }
+
+  WaldTotal = Wald[!sapply(Wald, is.null)]
+  ParmsTotal = Parms[!sapply(Parms, is.null)]
+  ProfileTotal = Profile[!sapply(Profile, is.null)]
+
+  names(WaldTotal) =
+    names(ParmsTotal) =
+    names(ProfileTotal) = pSplits
+
+  toReturn3Step = list(WaldTotal = WaldTotal,
+                       EV = EV,
+                       ParmsTotal = ParmsTotal,
+                       ProfileTotal = ProfileTotal)
+}
+
+reformResults = function(splitSizes,
+                         ParmsTotal,
+                         ProfileTotal,
+                         EV, WaldTotal,
+                         sizeMlevels,
+                         mLevels,
+                         Covariates,
+                         pSplits){
+  splitInfo = list()
+
+  for(idxSplits in 1:length(splitSizes)){
+    nclassTemp = splitSizes[idxSplits]
     ParmsTemp = ParmsTotal[[idxSplits]]
     ProfileTemp = ProfileTotal[[idxSplits]]
     EVTemp = EV[[idxSplits]]
@@ -189,34 +210,27 @@ reformResults = function(nClassTotal, ParmsTotal, ProfileTotal,
     for(j in 1:length(Covariates)){
       EV1split[[j]] = EVTemp[,grepl(Covariates[j], colnames(EVTemp))]
 
+      if(mLevels[j] == "ordinal"){
+        EV1split
 
-      if(mLevelsLGdependent[j] == "nominal"){
-        # EV1split[[j]] = matrix(
-          # EVTemp[1:(mLevelsCovariates[j] * nclassTemp)],
-          # ncol = nclassTemp)
-        Parms1split[[j]] = ParmsTemp[1:((mLevelsCovariates[j] - 1) * nclassTemp)]
-        ParmsTemp = ParmsTemp[-c(1:((mLevelsCovariates[j] - 1) * nclassTemp))]
-        # EVTemp = EVTemp[-c(1:(mLevelsCovariates[j] * nclassTemp))]
+        Parms1split[[j]] = ParmsTemp[1:((sizeMlevels[j] - 1) + nclassTemp  - 1)]
+        ParmsTemp = ParmsTemp[-c(1:((sizeMlevels[j] - 1) * nclassTemp))]
       }
 
-      if(mLevelsLGdependent[j] == "ordinal"){
-        Parms1split[[j]] = ParmsTemp[1:((mLevelsCovariates[j] - 1) + nclassTemp  - 1)]
-        ParmsTemp = ParmsTemp[-c(1:((mLevelsCovariates[j] - 1) * nclassTemp))]
-      }
-
-      if(mLevelsLGdependent[j] == "continuous"){
-        # EV1split[[j]] = EVTemp[1:nclassTemp]
+      if(mLevels[j] == "continuous"){
         Parms1split[[j]] = ParmsTemp[1:nclassTemp]
-        ParmsTemp = ParmsTemp[-c(1:((mLevelsCovariates[j] - 1) * nclassTemp))]
-        # EVTemp = EVTemp[1:nclassTemp]
+        ParmsTemp = ParmsTemp[-c(1:((sizeMlevels[j] - 1) * nclassTemp))]
       }
     }
-    toReturn[[idxSplits]] = list(ClassProb = classProb,
+    splitInfo[[idxSplits]] = list(ClassProb = classProb,
                                  EV = EV1split,
                                  Parameters = Parms1split,
-                                 Wald = WaldTotal[[idxSplits]],
-                                 MeasurementLevels = mLevelsLGdependent)
+                                 Wald = WaldTotal)
   }
-  names(toReturn) = names(nClassTotal)
+  names(splitInfo) = pSplits
+
+  toReturn = list(splitInfo = splitInfo,
+                  varInfo = list(mLevels = mLevels,
+                                 sizeMlevels = sizeMlevels))
   return(toReturn)
 }
