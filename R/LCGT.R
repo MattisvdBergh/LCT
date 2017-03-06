@@ -195,7 +195,7 @@ LCGT = function(Dataset,
           ###############################
           ######## Make new Data ########
           ###############################
-          data.temp = utils::write.delim(paste0("H", Hclass-1,
+          data.temp = utils::read.delim(paste0("H", Hclass-1,
                                         "c", substr(preC[iCC], 1, Hclass - 1), "_sol",
                                         splitsClasses[[length(splitsClasses)]][wPreS],
                                         ".txt"), dec = ",")
