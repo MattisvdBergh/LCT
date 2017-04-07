@@ -3,23 +3,18 @@
 \docType{data}
 \name{SocialCapital}
 \alias{SocialCapital}
-\title{Arabidopsis QTL data on gravitropism}
-\format{An object of}
-\source{
-\href{http://qtlarchive.org/db/q?pg=projdetails&proj=moore_2013b}{QTL Archive}
-}
+\title{Dataset on Social Capital}
+\format{Every row of the dataset represents an unique respondent, while column represent a variable of the General Social Survey.}
 \usage{
 data(SocialCapital)
 }
 \description{
-Data from a QTL experiment on gravitropism in
-Arabidopsis, with data on 162 recombinant inbred lines (Ler x
-Cvi). The outcome is the root tip angle (in degrees) at two-minute
-increments over eight hours.
+This is a data set on social capital from the General Social Survey. It has been originally used by Owen and Videras (2009).
 }
 \references{
-Moore et al. (2013) Genetics 195:1077-1086
-(\href{http://www.ncbi.nlm.nih.gov/pubmed/23979570}{PubMed})
+Ann L. Owen and Julio Videras (2009) Reconsidering social capital: a latent class approach.
+Empirical Economics, 37(3), 555-582.
+(\href{https://link.springer.com/article/10.1007/s00181-008-0246-6}{Springer})
 }
 \keyword{datasets}
 

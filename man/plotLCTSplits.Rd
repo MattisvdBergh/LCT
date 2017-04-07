@@ -5,7 +5,8 @@
 \title{Plot the class means or conditinal probabilities of every split of a LCT}
 \usage{
 plotLCTSplits(resTree, rYlim = c(0, 1), doPlot = FALSE, nameTree = "",
-  dev = "png", doEq = FALSE, idxSP = NULL)
+  dev = "png", doEq = FALSE, idxSP = NULL, ylab = "Mean score",
+  xlab = "Classes", lwd = 1)
 }
 \arguments{
 \item{resTree}{A Latent Class Tree object}
