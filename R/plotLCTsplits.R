@@ -17,7 +17,10 @@ plotLCTSplits = function(resTree,
                          nameTree = "",
                          dev = "png",
                          doEq = FALSE,
-                         idxSP = NULL){
+                         idxSP = NULL,
+                         ylab = "Mean score",
+                         xlab = "Classes",
+                         lwd = 1){
 
   if(doPlot == TRUE){
     mainDir = getwd();  subDir = paste0("Splits", nameTree)
@@ -66,22 +69,24 @@ plotLCTSplits = function(resTree,
 
     if(any("meanEV" %in% names(resTree$splitInfo))){
       plot(evSplit[,1], ylim = rYlim,
-           xlab = "Change over time", ylab = "Score",
+           xlab = xlab, ylab = ylab, lwd = lwd,
            main = sp[idxSplits], type = "l", bty = "n", axes = FALSE)
       for(idxClass in 2:ncol(evSplit)){
-        lines(evSplit[,idxClass], pch = idxClass, col = idxClass, type = "l", lty = idxClass)
+        lty = idxClass
+        if(lty > 2){lty = lty + 1}
+        lines(evSplit[,idxClass], pch = idxClass, col = idxClass, type = "l", lty = lty, lwd = lwd)
       }
       axis(1)
       axis(2, las = 2)
     } else{
 
     plot(evSplit[1,], ylim = rYlim,
-         xlab = "Classes", ylab = "Mean score",
+         xlab = "Classes", ylab = ylab,
          type = "b", bty = "n", axes = FALSE)
     for(idxVar in 2:nrow(evSplit)){
       lines(evSplit[idxVar,], pch = idxVar, col = idxVar, type = "b")
     }
-    axis(1, at = 1:spSize[idxSplits], spClasses)
+    axis(1, at = 1:spSize[idxSplits], substr(spClasses, 2, nchar(spClasses)))
     axis(2, las = 2)
 
     }

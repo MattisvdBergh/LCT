@@ -10,7 +10,7 @@ plotLayoutLCT <- function(resTree, ...){
   classSizes = round(c(resTree$splitInfo$Ntot,
                        resTree$splitInfo$CppG * resTree$splitInfo$Ntot))
 
-  qgraph::qgraph(cbind(computeEdges(resTree)[,-3], resTree$splitInfo$CppG * resTree$splitInfo$Ntot),
+  qgraph::qgraph(computeEdges(resTree)[,-3],
                  layout = igraph::layout_as_tree,
                  labels = classSizes)
 }

@@ -19,8 +19,10 @@ exploreTree = function(resTree,
                        dirTreeResults = getwd(),
                        ResultsFolder = "exploreTree",
                        Covariates = c("age", "sex"),
+                       posCovVal = NULL,
                        mLevels = c("ordinal", "continuous"),
-                       weight = "weight"){
+                       weight = "weight",
+                       analysis = "dependent"){
   mainDir = getwd()
 
   pSplits = resTree$treeSetup$parentClasses
@@ -43,16 +45,21 @@ exploreTree = function(resTree,
 
   if(is.null(syntaxExpl)){
     syntaxExpl = makeNewSyntaxExplore(dataDir = dirPost[1],
-                                       mLevels = mLevels,
-                                       Covariates = Covariates)
+                                      method = method,
+                                      mLevels = mLevels,
+                                      Covariates = Covariates,
+                                      weight = weight,
+                                      analysis = analysis)
   }
-
 
   Results3step = run3step(dirPost = dirPost,
                           syntaxExpl = syntaxExpl,
                           splitSizes = splitSizes,
                           pSplits = pSplits,
-                          dirTreeResults = dirTreeResults)
+                          dirTreeResults = dirTreeResults,
+                          Covariates = Covariates,
+                          analysis = analysis,
+                          posCovVal = posCovVal)
 
   toReturn = reformResults(splitSizes = splitSizes,
                            ParmsTotal = Results3step$ParmsTotal,
@@ -62,7 +69,8 @@ exploreTree = function(resTree,
                            sizeMlevels = sizeMlevels,
                            mLevels = mLevels,
                            Covariates = Covariates,
-                           pSplits = pSplits)
+                           pSplits = pSplits,
+                           analysis = analysis)
   setwd(mainDir)
   return(toReturn)
 }
@@ -71,7 +79,8 @@ makeNewSyntaxExplore = function(dataDir = dataDir,
                                 method = "bch",
                                 mLevels = mLevels,
                                 Covariates = Covariates,
-                                weight = "weight"){
+                                weight = "weight",
+                                analysis = "dependent"){
 
   syntaxExploreToBe = utils::capture.output(cat(paste("
 //LG5.1//
@@ -91,29 +100,46 @@ model
    latent Cluster nominal posterior = ( Cluster#1 Cluster#2 ) ;
  equations
 end model"
-)))
+  )))
 
-  syntaxExploreToBe[grep("dependent", syntaxExploreToBe)] =
-    utils::capture.output(cat(paste0("   dependent ", paste(Covariates, mLevels, collapse = ", "), ";", sep = "")))
-  syntaxExploreToBe[length(syntaxExploreToBe)] = paste0("   ", Covariates[1]," <- 1 + Cluster;")
-  if(length(Covariates)>1){
-  for(idxCov in 2:length(Covariates)){
-    syntaxExploreToBe[length(syntaxExploreToBe) + 1] = paste0("   ", Covariates[idxCov]," <- 1 + Cluster;")
-  }}
-  for(idxCovCont in which(mLevels == "continuous")){
-    syntaxExploreToBe[length(syntaxExploreToBe) + 1] = paste0("   ", Covariates[idxCovCont],";")
+  mLevelsToPaste = ifelse(mLevels == "continuous", "", mLevels)
+
+  if(analysis == "dependent"){
+    syntaxExploreToBe[grep("dependent", syntaxExploreToBe)] =
+      utils::capture.output(cat(paste0("   dependent ", paste(Covariates, mLevels, collapse = ", "), ";", sep = "")))
+    syntaxExploreToBe[length(syntaxExploreToBe)] = paste0("   ", Covariates[1]," <- 1 + Cluster;")
+    if(length(Covariates)>1){
+      for(idxCov in 2:length(Covariates)){
+        syntaxExploreToBe[length(syntaxExploreToBe) + 1] = paste0("   ", Covariates[idxCov]," <- 1 + Cluster;")
+      }}
+    for(idxCovCont in which(mLevels == "continuous")){
+      syntaxExploreToBe[length(syntaxExploreToBe) + 1] = paste0("   ", Covariates[idxCovCont],";")
+    }}
+  if(analysis == "covariates"){
+    syntaxExploreToBe[grep("dependent", syntaxExploreToBe)] =
+      utils::capture.output(cat(paste0("   independent ", paste(Covariates, mLevelsToPaste, collapse = ", "), ";", sep = "")))
+    syntaxExploreToBe[length(syntaxExploreToBe)] = paste0("   Cluster <- 1 + ", paste(Covariates, collapse = "+"),";")
   }
   syntaxExploreToBe[length(syntaxExploreToBe) + 1] = "end model"
   return(syntaxExploreToBe)
+}
+
+# function to remove missings
+rna = function(x){
+  x[!is.na(x)]
 }
 
 run3step = function(dirPost,
                     syntaxExpl,
                     splitSizes,
                     pSplits,
-                    dirTreeResults){
+                    dirTreeResults,
+                    Covariates,
+                    posCovVal,
+                    analysis){
 
   EV = Wald = Profile = Parms = list()
+  nCov = length(Covariates)
   # to run the three step
   for(reps in 1:length(dirPost)){
 
@@ -153,26 +179,66 @@ run3step = function(dirPost,
                          col.names = paste0("V",seq_len(ncolCSV)),
                          header = FALSE, sep =",", fill = TRUE)
 
-    EV[[reps]] =  unique(read.table(paste0("ev",
-                                           pSplits[reps],
-                                           ".txt"),
-                                    sep = ",", header = TRUE))
 
-    # function to remove missings
-    rna = function(x){
-      x[!is.na(x)]
-    }
 
     rowParms = which(Results[,5]=="Parameters")
     rowWald = which(Results[,5]=="WaldStatistics")
     rowProfile = which(Results[,5]=="Profile")
     Wald[[reps]] = rna(Results[rowWald,-c(1:5)])
-    Parms[[reps]] = rna(Results[rowParms,-c(1:5)])
+    ParmsTemp = rna(Results[rowParms,-c(1:5)])
     Profile[[reps]] = rna(Results[rowProfile,-c(1:5)])
+
+    matParms = rbind(0, matrix(ParmsTemp, nrow = splitSizes[reps] - 1))
+
+    colnames(matParms) = c("Intercept", Covariates)
+    rownames(matParms) = paste0(names(splitSizes)[reps], 1:splitSizes[reps])
+    Parms[[reps]] = matParms
+
+    if(analysis == "dependent"){
+    EV[[reps]] =  unique(read.table(paste0("ev",
+                                           pSplits[reps],
+                                           ".txt"),
+                                    sep = ",", header = TRUE))
+    }
+
+    if(analysis == "covariates"){
+      dataSplit = read.delim(paste0(dirTreeResults, "/", dirPost[reps]))
+      meanCov = apply(dataSplit[,Covariates], 2, function(x){mean(x, na.rm = TRUE)})
+      betaAllCov = betaAllCovMean = list()
+      length(betaAllCov) = length(betaAllCovMean) = nCov
+      names(betaAllCov) = names(betaAllCovMean) = Covariates
+
+      for(idxCov in 1:nCov){
+        if(is.null(posCovVal)){
+          posCovVal = sort(unique(rna(dataSplit[,Covariates[idxCov]])))
+        }
+        betaCovVal = sapply(matParms[,Covariates[idxCov]], function(x){x * posCovVal})
+        betaCovMean = matParms[,Covariates[idxCov]] * meanCov[idxCov]
+        rownames(betaCovVal) = posCovVal
+        betaAllCov[[idxCov]] = betaCovVal
+        betaAllCovMean[[idxCov]] = betaCovMean
+      }
+
+      EVcov = list()
+      length(EVcov) = nCov
+      names(EVcov) = Covariates
+      for(idxCov in 1:nCov){
+        expCov = list()
+        for(idxClass in 1:splitSizes[reps]){
+          expCov[[idxClass]] =  exp(matParms[idxClass,1] +
+                                      betaAllCov[[idxCov]][,idxClass] +
+                                      sum(sapply(betaAllCovMean[-idxCov],
+                                                 function(x){x[idxClass]})))
+        }
+        allExp = Reduce("+", expCov)
+        EVcov[[idxCov]] = sapply(expCov, function(x){x/allExp})
+      }
+      EV[[reps]] = EVcov
+    }
   }
 
   WaldTotal = Wald[!sapply(Wald, is.null)]
-  ParmsTotal = Parms[!sapply(Parms, is.null)]
+  ParmsTotal = Parms
   ProfileTotal = Profile[!sapply(Profile, is.null)]
 
   names(WaldTotal) =
@@ -192,7 +258,8 @@ reformResults = function(splitSizes,
                          sizeMlevels,
                          mLevels,
                          Covariates,
-                         pSplits){
+                         pSplits,
+                         analysis){
   splitInfo = list()
 
   for(idxSplits in 1:length(splitSizes)){
@@ -206,7 +273,7 @@ reformResults = function(splitSizes,
     classProbTempOrder = order(ProfileTemp[1:nclassTemp], decreasing = TRUE)
     classProb = classProbTemp[classProbTempOrder]
 
-
+    if(analysis == "dependent"){
     for(j in 1:length(Covariates)){
       EV1split[[j]] = EVTemp[,grepl(Covariates[j], colnames(EVTemp))]
 
@@ -222,10 +289,17 @@ reformResults = function(splitSizes,
         ParmsTemp = ParmsTemp[-c(1:((sizeMlevels[j] - 1) * nclassTemp))]
       }
     }
+    }
+
+    if(analysis == "covariates"){
+      EV1split = EV[[idxSplits]]
+      Parms1split = ParmsTotal[[idxSplits]]
+    }
+
     splitInfo[[idxSplits]] = list(ClassProb = classProb,
-                                 EV = EV1split,
-                                 Parameters = Parms1split,
-                                 Wald = WaldTotal)
+                                  EV = EV1split,
+                                  Parameters = Parms1split,
+                                  Wald = WaldTotal)
   }
   names(splitInfo) = pSplits
 

@@ -5,7 +5,10 @@
 #' @description Several figures with the mean or proportion of the covariates for every split.
 #'
 #'@export
-plotLCTexpl = function(explTree, ...){
+plotLCTexpl = function(explTree,
+                       ylab="",
+                       ylab2 = "",
+                       beside = FALSE, ...){
 
   splitSize = sapply(1:length(explTree$splitInfo), function(i){length(explTree$splitInfo[[i]]$ClassProb)})
   mLevels = explTree$varInfo$mLevels
@@ -25,8 +28,8 @@ plotLCTexpl = function(explTree, ...){
       if(mLevels[idxVar] == "ordinal"){
         bm = barplot(matrix(
           unlist(ev),nrow = sizeMlevels[idxVar]),
-          beside = TRUE, col = rainbow(sizeMlevels[idxVar]), ylim = c(0,1),
-          names.arg = childClasses, las = 2)
+          beside = beside, col = rainbow(sizeMlevels[idxVar]), ylim = c(0,1),
+          names.arg = substr(childClasses, 2, nchar(childClasses)), las = 1, ylab = ylab)
       }
 
       if(mLevels[idxVar] == "continuous"){
@@ -36,8 +39,9 @@ plotLCTexpl = function(explTree, ...){
         ylimcont = c(rEV[1] - difRev, rEV[2] + difRev)
         plot(1:splitSize[idxSplits], ev,
              xlim = c(0, splitSize[idxSplits] + 1), ylim = ylimcont,
-             axes= FALSE, type = "b", bty = "n", xlab = "Classes")
+             axes= FALSE, type = "b", bty = "n", xlab = "Classes", ylab = "")
         axis(4, las = 2)
+        mtext(ylab2, side = 4, line = 3)
       }
     }
   }

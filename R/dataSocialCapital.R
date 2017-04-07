@@ -1,21 +1,15 @@
-#' Arabidopsis QTL data on gravitropism
+#' Dataset on Social Capital
 #'
-#' Data from a QTL experiment on gravitropism in
-#' Arabidopsis, with data on 162 recombinant inbred lines (Ler x
-#' Cvi). The outcome is the root tip angle (in degrees) at two-minute
-#' increments over eight hours.
+#' @description This is a data set on social capital from the General Social Survey. It has been originally used by Owen and Videras (2009).
 #'
 #' @docType data
 #'
 #' @usage data(SocialCapital)
 #'
-#' @format An object of
+#' @format Every row of the dataset represents an unique respondent, while column represent a variable of the General Social Survey.
 #'
-#' @keywords datasets
-#'
-#' @references Moore et al. (2013) Genetics 195:1077-1086
-#' (\href{http://www.ncbi.nlm.nih.gov/pubmed/23979570}{PubMed})
-#'
-#' @source \href{http://qtlarchive.org/db/q?pg=projdetails&proj=moore_2013b}{QTL Archive}
+#' @references Ann L. Owen and Julio Videras (2009) Reconsidering social capital: a latent class approach.
+#' Empirical Economics, 37(3), 555-582.
+#' (\href{https://link.springer.com/article/10.1007/s00181-008-0246-6}{Springer})
 #'
 "SocialCapital"

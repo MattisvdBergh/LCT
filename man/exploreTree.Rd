@@ -6,8 +6,8 @@
 \usage{
 exploreTree(resTree, LG = LG, syntaxExpl = NULL, sizeMlevels = c(2, 1),
   method = "bch", dirTreeResults = getwd(), ResultsFolder = "exploreTree",
-  Covariates = c("age", "sex"), mLevels = c("ordinal", "continuous"),
-  weight = "weight")
+  Covariates = c("age", "sex"), posCovVal = NULL, mLevels = c("ordinal",
+  "continuous"), weight = "weight", analysis = "dependent")
 }
 \arguments{
 \item{resTree}{A Latent Class Tree object}

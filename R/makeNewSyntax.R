@@ -24,7 +24,7 @@ options
    quadrature  nodes=10;
    missing  includeall;
    output
-      parameters=first estimatedvalues=model
+      parameters=first estimatedvalues=model reorderclasses
       write
 variables
    caseweight ", weight,";
