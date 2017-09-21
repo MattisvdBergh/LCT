@@ -14,9 +14,14 @@ getOutputLCGT = function(resultsTemp, Hclass, maxClassSplit1,
   AIC3 = -2 * LL + 3 * Npar
 
   IC = matrix(list(LL, BIC, AIC, AIC3), ncol = 4,
-              dimnames = list(CC, c("LL", "BIC", "AIC", "AIC3")))
+              dimnames = list(CC, c("LL", "BIC", "AIC", "AIC-3")))
 
-  solution = which.min(IC[[1, grep(stopCriterium, colnames(IC))]])
+  solution = which.min(IC[[1, 
+                           grep(
+                             paste0("^", 
+                                    stopCriterium, 
+                                    "$"),
+                             colnames(IC))]])
 
   ncolCSV = max(utils::count.fields(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"), sep = ","))
 

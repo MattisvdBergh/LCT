@@ -41,7 +41,7 @@ plotLCTexpl = function(explTree,
              xlim = c(0, splitSize[idxSplits] + 1), ylim = ylimcont,
              axes= FALSE, type = "b", bty = "n", xlab = "Classes", ylab = "")
         axis(4, las = 2)
-        mtext(ylab2, side = 4, line = 3)
+        mtext(ylab2, side = 4, line = 3, cex = 2)
       }
     }
   }
