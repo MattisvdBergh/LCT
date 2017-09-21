@@ -1,3 +1,4 @@
+#' @export
 makeSyntax = function(dataDir,
                       Hclass,
                       syntax,

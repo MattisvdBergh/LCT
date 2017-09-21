@@ -87,7 +87,7 @@ LCT = function(Dataset,
     mLevelsRclasses = sapply(mydata[,itemNames], class)
     mLevels = ifelse(mLevelsRclasses ==  "numeric", "continuous", "ordinal")
   }
-  sizeMlevels = sapply(mydata[,itemNames], function(x){length(unique(x))})
+  sizeMlevels = sapply(mydata[,itemNames], function(x){length(unique(x[!is.na(x)]))})
 
   # One list with the sizes of the splits, and one list with the names
   # Hclass tracks the level of the tree
@@ -346,4 +346,294 @@ helpFun = function(x, greplIdx, idx = NULL) {
 }
 
 
+
+computeGlobalCpp = function(ClassProportions, Splits, Splitpoints){
+  
+  cpp = ClassProportions
+  cpp = t(apply(cpp, 1, as.numeric))
+  
+  sizeAllSplits = unlist(Splits)[unlist(Splits)>1]
+  allSplitClasses = unlist(sapply(1:length(sizeAllSplits),
+                                  function(i){paste0(Splitpoints[i], 1:sizeAllSplits[i])}
+  ))
+  
+  cppToBe = cpp
+  splitsCpp = rownames(cpp)
+  names(cppToBe) = paste0(0, 1:length(cppToBe))
+  
+  for(row in 2:nrow(cpp)){
+    ncharSplit = nchar(splitsCpp[row])
+    
+    oldRow = substr(splitsCpp[row], 1, ncharSplit - 1)
+    newCol = as.numeric(substr(splitsCpp[row], ncharSplit, ncharSplit))
+    cppToBe[row,] = cppToBe[oldRow,newCol] * cppToBe[row,]
+  }
+  cppGtemp = as.numeric(t(cppToBe))
+  tempNames = expand.grid(splitsCpp, 1:ncol(cpp))
+  names(cppGtemp) = apply(
+    tempNames[order(tempNames[,1]),],
+    1, paste, collapse="")
+  
+  cppGtoReturn = cppGtemp[allSplitClasses]
+  return(cppGtoReturn)
+}
+
+makeNewSyntax = function(dataDir,
+                         itemNames,
+                         weight,
+                         mLevels,
+                         sets = 16,
+                         iterations = 50){
+  
+  newSyntaxToBe = utils::capture.output(cat(paste("
+
+//LG5.1//
+version = 5.1
+infile '", dataDir,"'
+                                                  
+model
+options
+maxthreads=2;
+algorithm
+tolerance=1e-008 emtolerance=0,01 emiterations=250 nriterations=50;
+startvalues
+seed=0 sets=", sets," tolerance=1e-005 iterations=", iterations,";
+bayes
+categorical=1 variances=1 latent=1 poisson=1;
+montecarlo
+seed=0 sets=0 replicates=500 tolerance=1e-008;
+quadrature  nodes=10;
+missing  includeall;
+output
+parameters=first estimatedvalues=model reorderclasses
+write
+variables
+caseweight ", weight,";
+dependent;
+   latent
+   Cluster nominal 1;
+equations
+   Cluster <- 1;
+end model
+")))
+  
+  
+  newSyntaxToBe[grep("dependent", newSyntaxToBe)] =
+    utils::capture.output(cat(paste0("   dependent ", paste(itemNames, mLevels, collapse = ", "), ";", sep = "")))
+  
+  newSyntaxToBe[length(newSyntaxToBe)] = paste0("   ", itemNames[1]," <- 1 + Cluster;")
+  for(idxVar in 2:length(itemNames)){
+    newSyntaxToBe[length(newSyntaxToBe) + 1] = paste0("   ", itemNames[idxVar]," <- 1 + Cluster;")
+  }
+  
+  for(idxVarCon in which(mLevels == "continuous")){
+    newSyntaxToBe[length(newSyntaxToBe) + 1] = paste0("   ", itemNames[idxVarCon]," | Cluster;")
+  }
+  
+  newSyntaxToBe[length(newSyntaxToBe) + 1] = "end model"
+  newSyntaxToBe[length(newSyntaxToBe) + 1] = ""
+  return(newSyntaxToBe)
+}
+
+makeSyntax = function(dataDir,
+                      Hclass,
+                      syntax,
+                      maxClassSplit1,
+                      nKeepVariables,
+                      namesKeepVariables,
+                      CC = 0) {
+  
+  syntax[grep("infile", syntax)] = utils::capture.output(cat(paste0("infile \'", dataDir, "'")))
+  syntax[grep("write", syntax)] =  paste0(
+    "write = 'H", Hclass, "c", CC, "_sol", 1, ".csv'
+    writeestimatedvalues='ev", CC, "_sol", 1, ".txt'
+    outfile 'H", Hclass, "c", CC, "_sol", 1, ".txt' classification ",
+    ifelse(nKeepVariables>0,
+           paste0("keep ", paste0(namesKeepVariables, collapse = ", ")),
+           ""),";"
+  )
+  
+  # lm is the number of lines of one model.
+  lm = which(syntax == "end model")[1] - which(syntax == "model")[1]
+  syntaxModel = syntax[which(syntax == "model") :which(syntax == "end model")]
+  newSyntax = syntax
+  
+  for(nClassSplit in 2:maxClassSplit1){
+    newSyntax = c(newSyntax, syntaxModel)
+    newSyntax[grep("write", newSyntax)][nClassSplit] =  paste0(
+      "write = 'H", Hclass, "c", CC, "_sol", nClassSplit, ".csv'
+      writeestimatedvalues='ev", CC, "_sol", nClassSplit, ".txt'
+      outfile 'H", Hclass, "c", CC, "_sol", nClassSplit, ".txt' classification ",
+      ifelse(nKeepVariables>0,
+             paste0("keep ", paste0(namesKeepVariables, collapse = ", ")),
+             ""),";"
+    )
+    newSyntax[grep("Cluster nominal", newSyntax)][nClassSplit] = paste0("      Cluster nominal ", nClassSplit, ";")
+  }
+  
+  utils::write.table(newSyntax, paste0("LCT", CC, ".lgs"), row.names = FALSE, quote = FALSE, col.names = FALSE)
+}
+
+getOutputLCT = function(resultsTemp,
+                        Hclass,
+                        maxClassSplit1,
+                        CC = 0,
+                        Ntot = Ntot,
+                        stopCriterium = stopCriterium,
+                        itemNames = itemNames,
+                        decreasing = TRUE,
+                        mLevels = mLevels,
+                        sizeMlevels = sizeMlevels){
+  
+  ## What is the lowest Information Criterium?
+  LL = helpFun(resultsTemp, "Log-likelihood \\(LL\\)")
+  Npar = helpFun(resultsTemp, "Npar")[-1]
+  
+  names(LL) = 1:maxClassSplit1
+  BIC = -2 * LL + log(Ntot) * Npar
+  AIC = -2 * LL + 2 * Npar
+  AIC3 = -2 * LL + 3 * Npar
+  
+  IC = matrix(list(LL, BIC, AIC, AIC3), ncol = 4,
+              dimnames = list(CC, c("LL", "BIC", "AIC", "AIC3")))
+  
+  solution = which.min(IC[[1, grep(stopCriterium, colnames(IC))]])
+  
+  ncolCSV = max(utils::count.fields(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"), sep = ","))
+  
+  csvTemp = utils::read.table(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"),
+                              header = FALSE, col.names = paste0("V",seq_len(ncolCSV)), sep =",", fill = TRUE)
+  
+  rowEV = grep("EstimatedValues", csvTemp[,5])
+  
+  # Class proportions
+  Classpp.temp = csvTemp[rowEV, -c(1:5)][1:solution]
+  order.Classpp = order(Classpp.temp, decreasing = decreasing)
+  Classpp = as.matrix(Classpp.temp[order.Classpp])
+  colnames(Classpp) = 1:solution
+  rownames(Classpp) = CC
+  
+  # Estimated Values
+  evTemp = csvTemp[rowEV,-c(1:(5 + solution))]
+  evTemp = evTemp[!is.na(evTemp)]
+  
+  ordVar = which(mLevels == "ordinal")
+  conVar = which(mLevels == "continuous")
+  
+  count = 1
+  EVtemp2 = matrix(, nrow = 0, ncol = solution)
+  for(idxVar in seq_along(itemNames)){
+    if(idxVar %in% ordVar){
+      EVtemp = matrix(evTemp[count : (count + (sizeMlevels[idxVar] * solution) - 1)],
+                      ncol = solution)
+      rownames(EVtemp) = paste0(itemNames[idxVar], ".", 1:sizeMlevels[[idxVar]])
+      EVtemp2 = rbind(EVtemp2, EVtemp)
+      
+      count = count + (sizeMlevels[idxVar] * solution)
+    }
+    if(idxVar %in% conVar){
+      EVtemp = matrix(evTemp[count : (count + solution - 1)],
+                      ncol = solution)
+      rownames(EVtemp) = paste0(itemNames[idxVar])
+      EVtemp2 = rbind(EVtemp2, EVtemp)
+      count = count + solution
+    }
+  }
+  
+  # Sort if needed
+  if(solution > 1){
+    EV = EVtemp2[,order.Classpp]
+  } else {
+    EV = EVtemp2
+  }
+  
+  colnames(EV) = paste0(CC, 1:solution)
+  
+  # Posteriors
+  Post.temp = utils::read.delim(paste0("H", Hclass, "c", CC, "_sol", solution, ".txt"),
+                                dec = ",")
+  Post.unordered = Post.temp[,(ncol(Post.temp) - (solution + 1)): (ncol(Post.temp) - 1)]
+  Post = Post.unordered[c(1, order.Classpp + 1)]
+  colnames(Post) = c(paste0("W_", CC), paste0("Post_", CC, 1:solution))
+  
+  if(any(mLevels == "continuous")){
+    ICtemp = Map(helpFun,
+                 x = list(resultsTemp),
+                 greplIdx = list("Entr",
+                                 "Classification log-likelihood",
+                                 "CLC",
+                                 "AWE",
+                                 "ICL-BIC"),
+                 idx = list(seq(1, 2 * maxClassSplit1, 2),
+                            1:maxClassSplit1,
+                            1:maxClassSplit1,
+                            1:maxClassSplit1,
+                            1:maxClassSplit1)
+    )
+    
+    IC = cbind(IC, matrix(ICtemp, nrow = 1,
+                          dimnames = list(NULL,
+                                          c("Entropy",
+                                            "CL",
+                                            "CLC",
+                                            "AWE",
+                                            "ICL-BIC"))))
+    
+  } else{ ICtemp = Map(helpFun,
+                       x = list(resultsTemp),
+                       greplIdx = list("Entr",
+                                       "Classification log-likelihood",
+                                       "CLC",
+                                       "AWE",
+                                       "ICL-BIC",
+                                       "L-squared",
+                                       "X-squared",
+                                       "Cressie-Read"),
+                       idx = list(seq(1, 2 * maxClassSplit1, 2),
+                                  1:maxClassSplit1,
+                                  1:maxClassSplit1,
+                                  1:maxClassSplit1,
+                                  1:maxClassSplit1,
+                                  1:maxClassSplit1,
+                                  1:maxClassSplit1,
+                                  1:maxClassSplit1)
+  )
+  
+  IC = cbind(IC, matrix(ICtemp, nrow = 1,
+                        dimnames = list(NULL,
+                                        c("Entropy", "CL",
+                                          "CLC",
+                                          "AWE",
+                                          "ICL-BIC",
+                                          "Lsquared",
+                                          "Xsquared",
+                                          "CR"))))
+  
+  }
+  
+  
+  toReturn = list(IC = IC, Classpp = Classpp,  #rbind
+                  Post = Post, EV = EV, #cbind
+                  solution = solution)
+  return(toReturn)
+}
+
+makeCleanNames = function(names, finalClasses){
+  
+  names.classes.clean = names
+  for(k in 2:length(names)){
+    row.classes = names[[k]]
+    classbranches = matrix(, nrow = k - 1, ncol = length(row.classes))
+    for (j in 1:length(row.classes)){
+      classbranch = character()
+      for(i in 2:k){classbranch[i - 1] = substr(row.classes[j], 1, i)}
+      classbranches[,j] = classbranch}
+    classbranchesTF = apply(classbranches, 2, function(x){x%in%finalClasses})
+    if(k == 2){
+      IndexChangedClasses = which(classbranchesTF)
+    } else {IndexChangedClasses = which(classbranchesTF, arr.ind = TRUE)[,2]}
+    names.classes.clean[[k]][IndexChangedClasses] = classbranches[which(classbranchesTF, arr.ind = TRUE)]
+  }
+  return(names.classes.clean)
+}
 
