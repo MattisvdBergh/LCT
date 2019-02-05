@@ -47,7 +47,9 @@ LCT = function(Dataset,
                nKeepVariables = 0,
                namesKeepVariables = NULL,
                sets = 16,
-               iterations = 50){
+               iterations = 50,
+               dec = ",",
+               sep = ";"){
 
   #########################################################################
   ######## Check aspects of the data and write to a results folder ########
@@ -145,7 +147,9 @@ LCT = function(Dataset,
                      itemNames = itemNames,
                      decreasing = decreasing,
                      mLevels = mLevels,
-                     sizeMlevels = sizeMlevels)
+                     sizeMlevels = sizeMlevels,
+                     dec = dec,
+                     sep = sep)
 
   ## Update the tree after the first split
   splitsClasses[[Hclass]] = unname(out$solution)
@@ -200,7 +204,7 @@ LCT = function(Dataset,
           data.temp = utils::read.delim(paste0("H", Hclass-1,
                                         "c", substr(preC[iCC], 1, Hclass - 1), "_sol",
                                         splitsClasses[[length(splitsClasses)]][wPreS],
-                                        ".txt"), dec = ",")
+                                        ".txt"), dec = dec)
 
           if (is.factor(data.temp$weight)) {
             data.temp$weight = as.numeric(levels(data.temp$weight))[data.temp$weight]
@@ -256,7 +260,9 @@ LCT = function(Dataset,
                                  itemNames = itemNames,
                                  decreasing = decreasing,
                                  mLevels = mLevels,
-                                 sizeMlevels = sizeMlevels)
+                                 sizeMlevels = sizeMlevels,
+                                 dec = dec,
+                                 sep = sep)
 
           idxRbind = 1:2
           idxCbind = 3:4
@@ -348,22 +354,22 @@ helpFun = function(x, greplIdx, idx = NULL) {
 
 
 computeGlobalCpp = function(ClassProportions, Splits, Splitpoints){
-  
+
   cpp = ClassProportions
   cpp = t(apply(cpp, 1, as.numeric))
-  
+
   sizeAllSplits = unlist(Splits)[unlist(Splits)>1]
   allSplitClasses = unlist(sapply(1:length(sizeAllSplits),
                                   function(i){paste0(Splitpoints[i], 1:sizeAllSplits[i])}
   ))
-  
+
   cppToBe = cpp
   splitsCpp = rownames(cpp)
   names(cppToBe) = paste0(0, 1:length(cppToBe))
-  
+
   for(row in 2:nrow(cpp)){
     ncharSplit = nchar(splitsCpp[row])
-    
+
     oldRow = substr(splitsCpp[row], 1, ncharSplit - 1)
     newCol = as.numeric(substr(splitsCpp[row], ncharSplit, ncharSplit))
     cppToBe[row,] = cppToBe[oldRow,newCol] * cppToBe[row,]
@@ -373,7 +379,7 @@ computeGlobalCpp = function(ClassProportions, Splits, Splitpoints){
   names(cppGtemp) = apply(
     tempNames[order(tempNames[,1]),],
     1, paste, collapse="")
-  
+
   cppGtoReturn = cppGtemp[allSplitClasses]
   return(cppGtoReturn)
 }
@@ -384,13 +390,13 @@ makeNewSyntax = function(dataDir,
                          mLevels,
                          sets = 16,
                          iterations = 50){
-  
+
   newSyntaxToBe = utils::capture.output(cat(paste("
 
 //LG5.1//
 version = 5.1
 infile '", dataDir,"'
-                                                  
+
 model
 options
 maxthreads=2;
@@ -416,20 +422,20 @@ equations
    Cluster <- 1;
 end model
 ")))
-  
-  
+
+
   newSyntaxToBe[grep("dependent", newSyntaxToBe)] =
     utils::capture.output(cat(paste0("   dependent ", paste(itemNames, mLevels, collapse = ", "), ";", sep = "")))
-  
+
   newSyntaxToBe[length(newSyntaxToBe)] = paste0("   ", itemNames[1]," <- 1 + Cluster;")
   for(idxVar in 2:length(itemNames)){
     newSyntaxToBe[length(newSyntaxToBe) + 1] = paste0("   ", itemNames[idxVar]," <- 1 + Cluster;")
   }
-  
+
   for(idxVarCon in which(mLevels == "continuous")){
     newSyntaxToBe[length(newSyntaxToBe) + 1] = paste0("   ", itemNames[idxVarCon]," | Cluster;")
   }
-  
+
   newSyntaxToBe[length(newSyntaxToBe) + 1] = "end model"
   newSyntaxToBe[length(newSyntaxToBe) + 1] = ""
   return(newSyntaxToBe)
@@ -442,7 +448,7 @@ makeSyntax = function(dataDir,
                       nKeepVariables,
                       namesKeepVariables,
                       CC = 0) {
-  
+
   syntax[grep("infile", syntax)] = utils::capture.output(cat(paste0("infile \'", dataDir, "'")))
   syntax[grep("write", syntax)] =  paste0(
     "write = 'H", Hclass, "c", CC, "_sol", 1, ".csv'
@@ -452,12 +458,12 @@ makeSyntax = function(dataDir,
            paste0("keep ", paste0(namesKeepVariables, collapse = ", ")),
            ""),";"
   )
-  
+
   # lm is the number of lines of one model.
   lm = which(syntax == "end model")[1] - which(syntax == "model")[1]
   syntaxModel = syntax[which(syntax == "model") :which(syntax == "end model")]
   newSyntax = syntax
-  
+
   for(nClassSplit in 2:maxClassSplit1){
     newSyntax = c(newSyntax, syntaxModel)
     newSyntax[grep("write", newSyntax)][nClassSplit] =  paste0(
@@ -470,7 +476,7 @@ makeSyntax = function(dataDir,
     )
     newSyntax[grep("Cluster nominal", newSyntax)][nClassSplit] = paste0("      Cluster nominal ", nClassSplit, ";")
   }
-  
+
   utils::write.table(newSyntax, paste0("LCT", CC, ".lgs"), row.names = FALSE, quote = FALSE, col.names = FALSE)
 }
 
@@ -483,43 +489,46 @@ getOutputLCT = function(resultsTemp,
                         itemNames = itemNames,
                         decreasing = TRUE,
                         mLevels = mLevels,
-                        sizeMlevels = sizeMlevels){
-  
+                        sizeMlevels = sizeMlevels,
+                        dec = dec,
+                        sep = sep){
+
   ## What is the lowest Information Criterium?
   LL = helpFun(resultsTemp, "Log-likelihood \\(LL\\)")
   Npar = helpFun(resultsTemp, "Npar")[-1]
-  
+
   names(LL) = 1:maxClassSplit1
   BIC = -2 * LL + log(Ntot) * Npar
   AIC = -2 * LL + 2 * Npar
   AIC3 = -2 * LL + 3 * Npar
-  
+
   IC = matrix(list(LL, BIC, AIC, AIC3), ncol = 4,
               dimnames = list(CC, c("LL", "BIC", "AIC", "AIC3")))
-  
+
   solution = which.min(IC[[1, grep(stopCriterium, colnames(IC))]])
-  
-  ncolCSV = max(utils::count.fields(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"), sep = ","))
-  
+
+  ncolCSV = max(utils::count.fields(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"), sep = sep))
+
   csvTemp = utils::read.table(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"),
-                              header = FALSE, col.names = paste0("V",seq_len(ncolCSV)), sep =",", fill = TRUE)
-  
+                              header = FALSE, col.names = paste0("V",seq_len(ncolCSV)),
+                              sep = sep, fill = TRUE, dec = dec)
+
   rowEV = grep("EstimatedValues", csvTemp[,5])
-  
+
   # Class proportions
   Classpp.temp = csvTemp[rowEV, -c(1:5)][1:solution]
   order.Classpp = order(Classpp.temp, decreasing = decreasing)
   Classpp = as.matrix(Classpp.temp[order.Classpp])
   colnames(Classpp) = 1:solution
   rownames(Classpp) = CC
-  
+
   # Estimated Values
   evTemp = csvTemp[rowEV,-c(1:(5 + solution))]
   evTemp = evTemp[!is.na(evTemp)]
-  
+
   ordVar = which(mLevels == "ordinal")
   conVar = which(mLevels == "continuous")
-  
+
   count = 1
   EVtemp2 = matrix(, nrow = 0, ncol = solution)
   for(idxVar in seq_along(itemNames)){
@@ -528,7 +537,7 @@ getOutputLCT = function(resultsTemp,
                       ncol = solution)
       rownames(EVtemp) = paste0(itemNames[idxVar], ".", 1:sizeMlevels[[idxVar]])
       EVtemp2 = rbind(EVtemp2, EVtemp)
-      
+
       count = count + (sizeMlevels[idxVar] * solution)
     }
     if(idxVar %in% conVar){
@@ -539,23 +548,24 @@ getOutputLCT = function(resultsTemp,
       count = count + solution
     }
   }
-  
+
   # Sort if needed
   if(solution > 1){
     EV = EVtemp2[,order.Classpp]
   } else {
     EV = EVtemp2
   }
-  
+
   colnames(EV) = paste0(CC, 1:solution)
-  
+
   # Posteriors
   Post.temp = utils::read.delim(paste0("H", Hclass, "c", CC, "_sol", solution, ".txt"),
-                                dec = ",")
-  Post.unordered = Post.temp[,(ncol(Post.temp) - (solution + 1)): (ncol(Post.temp) - 1)]
+                                dec = dec)
+  colWeight = which(colnames(Post.temp) == "weight")
+  Post.unordered = Post.temp[,c(colWeight, (ncol(Post.temp) - (solution)): (ncol(Post.temp) - 1))]
   Post = Post.unordered[c(1, order.Classpp + 1)]
   colnames(Post) = c(paste0("W_", CC), paste0("Post_", CC, 1:solution))
-  
+
   if(any(mLevels == "continuous")){
     ICtemp = Map(helpFun,
                  x = list(resultsTemp),
@@ -570,7 +580,7 @@ getOutputLCT = function(resultsTemp,
                             1:maxClassSplit1,
                             1:maxClassSplit1)
     )
-    
+
     IC = cbind(IC, matrix(ICtemp, nrow = 1,
                           dimnames = list(NULL,
                                           c("Entropy",
@@ -578,7 +588,7 @@ getOutputLCT = function(resultsTemp,
                                             "CLC",
                                             "AWE",
                                             "ICL-BIC"))))
-    
+
   } else{ ICtemp = Map(helpFun,
                        x = list(resultsTemp),
                        greplIdx = list("Entr",
@@ -598,7 +608,7 @@ getOutputLCT = function(resultsTemp,
                                   1:maxClassSplit1,
                                   1:maxClassSplit1)
   )
-  
+
   IC = cbind(IC, matrix(ICtemp, nrow = 1,
                         dimnames = list(NULL,
                                         c("Entropy", "CL",
@@ -608,10 +618,10 @@ getOutputLCT = function(resultsTemp,
                                           "Lsquared",
                                           "Xsquared",
                                           "CR"))))
-  
+
   }
-  
-  
+
+
   toReturn = list(IC = IC, Classpp = Classpp,  #rbind
                   Post = Post, EV = EV, #cbind
                   solution = solution)
@@ -619,7 +629,7 @@ getOutputLCT = function(resultsTemp,
 }
 
 makeCleanNames = function(names, finalClasses){
-  
+
   names.classes.clean = names
   for(k in 2:length(names)){
     row.classes = names[[k]]
