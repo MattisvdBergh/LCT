@@ -22,7 +22,8 @@ exploreTree = function(resTree,
                        posCovVal = NULL,
                        mLevels = c("ordinal", "continuous"),
                        weight = "weight",
-                       analysis = "dependent"){
+                       analysis = "dependent",
+                       sep = ";"){
   mainDir = getwd()
 
   pSplits = resTree$treeSetup$parentClasses
@@ -50,6 +51,8 @@ exploreTree = function(resTree,
                                       Covariates = Covariates,
                                       weight = weight,
                                       analysis = analysis)
+  } else{
+    syntaxExpl = readLines(syntaxExpl)
   }
 
   Results3step = run3step(dirPost = dirPost,
@@ -59,7 +62,8 @@ exploreTree = function(resTree,
                           dirTreeResults = dirTreeResults,
                           Covariates = Covariates,
                           analysis = analysis,
-                          posCovVal = posCovVal)
+                          posCovVal = posCovVal,
+                          sep = sep)
 
   toReturn = reformResults(splitSizes = splitSizes,
                            ParmsTotal = Results3step$ParmsTotal,
@@ -136,7 +140,8 @@ run3step = function(dirPost,
                     dirTreeResults,
                     Covariates,
                     posCovVal,
-                    analysis){
+                    analysis,
+                    sep){
 
   EV = Wald = Profile = Parms = list()
   nCov = length(Covariates)
@@ -171,13 +176,13 @@ run3step = function(dirPost,
 
     ncolCSV = max(count.fields(paste0("results",
                                       pSplits[reps],
-                                      ".csv"), sep = ","))
+                                      ".csv"), sep = sep))
 
     Results = read.table(paste0("results",
                                 pSplits[reps],
                                 ".csv"),
                          col.names = paste0("V",seq_len(ncolCSV)),
-                         header = FALSE, sep =",", fill = TRUE)
+                         header = FALSE, sep = sep, fill = TRUE)
 
 
 
@@ -198,7 +203,7 @@ run3step = function(dirPost,
     EV[[reps]] =  unique(read.table(paste0("ev",
                                            pSplits[reps],
                                            ".txt"),
-                                    sep = ",", header = TRUE))
+                                    sep = sep, header = TRUE))
     }
 
     if(analysis == "covariates"){
