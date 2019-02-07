@@ -491,7 +491,8 @@ getOutputLCT = function(resultsTemp,
                         mLevels = mLevels,
                         sizeMlevels = sizeMlevels,
                         dec = dec,
-                        sep = sep){
+                        sep = sep,
+                        ...){
 
   ## What is the lowest Information Criterium?
   LL = helpFun(resultsTemp, "Log-likelihood \\(LL\\)")
