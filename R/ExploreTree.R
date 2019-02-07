@@ -23,7 +23,8 @@ exploreTree = function(resTree,
                        mLevels = c("ordinal", "continuous"),
                        weight = "weight",
                        analysis = "dependent",
-                       sep = ";"){
+                       sep = ";",
+                       dec = ","){
   mainDir = getwd()
 
   pSplits = resTree$treeSetup$parentClasses
@@ -63,7 +64,8 @@ exploreTree = function(resTree,
                           Covariates = Covariates,
                           analysis = analysis,
                           posCovVal = posCovVal,
-                          sep = sep)
+                          sep = sep,
+                          dec = dec)
 
   toReturn = reformResults(splitSizes = splitSizes,
                            ParmsTotal = Results3step$ParmsTotal,
@@ -141,7 +143,8 @@ run3step = function(dirPost,
                     Covariates,
                     posCovVal,
                     analysis,
-                    sep){
+                    sep = ";",
+                    dec = dec){
 
   EV = Wald = Profile = Parms = list()
   nCov = length(Covariates)
@@ -182,7 +185,7 @@ run3step = function(dirPost,
                                 pSplits[reps],
                                 ".csv"),
                          col.names = paste0("V",seq_len(ncolCSV)),
-                         header = FALSE, sep = sep, fill = TRUE)
+                         header = FALSE, sep = sep, fill = TRUE, dec = dec)
 
 
 
