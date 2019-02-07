@@ -55,7 +55,9 @@ LCGT = function(Dataset,
                 nKeepVariables = 0,
                 namesKeepVariables = NULL,
                 sets = 16,
-                iterations = 50){
+                iterations = 50,
+                dec = ",",
+                sep = ";"){
 
   #########################################################################
   ######## Check aspects of the data and write to a results folder ########
@@ -147,7 +149,9 @@ LCGT = function(Dataset,
   out = getOutputLCGT(resultsTemp, Hclass, maxClassSplit1,
                   Ntot = Ntot, stopCriterium = stopCriterium,
                   decreasing = decreasing, levelsDependent = levelsDependent,
-                  nIndependent = nIndependent)
+                  nIndependent = nIndependent,
+                  dec = dec,
+                  sep = sep)
 
   ## Update the tree after the first split
   splitsClasses[[Hclass]] = unname(out$solution)
@@ -242,7 +246,8 @@ LCGT = function(Dataset,
           resultsTemp = readLines(paste0("LCT", preC[iCC],".lst"))
           outTemp = getOutputLCGT(resultsTemp, Hclass, maxClassSplit2, CC = preC[iCC],
                               Ntot = Ntot, stopCriterium = stopCriterium, decreasing = decreasing,
-                              levelsDependent = levelsDependent, nIndependent = nIndependent)
+                              levelsDependent = levelsDependent, nIndependent = nIndependent,
+                              dec = dec, sep = sep)
 
           idxRbind = 1:3
           idxCbind = 4:5
@@ -461,7 +466,9 @@ makeSyntax = function(dataDir,
 getOutputLCGT = function(resultsTemp, Hclass, maxClassSplit1,
                          CC = 0, Ntot = Ntot, stopCriterium = stopCriterium,
                          decreasing = TRUE, levelsDependent = levelsDependent,
-                         nIndependent = nIndependent){
+                         nIndependent = nIndependent,
+                         dec = dec,
+                         sep = sep){
 
   ## What is the lowest Information Criterium?
   LL = helpFun(resultsTemp, "Log-likelihood \\(LL\\)")
@@ -483,10 +490,11 @@ getOutputLCGT = function(resultsTemp, Hclass, maxClassSplit1,
                                     "$"),
                              colnames(IC))]])
 
-  ncolCSV = max(utils::count.fields(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"), sep = ","))
+  ncolCSV = max(utils::count.fields(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"), sep = sep))
 
   csvTemp = utils::read.table(paste0("H", Hclass, "c", CC, "_sol", solution, ".csv"),
-                              header = FALSE, col.names = paste0("V",seq_len(ncolCSV)), sep =",", fill = TRUE)
+                              header = FALSE, col.names = paste0("V",seq_len(ncolCSV)), 
+                              sep =sep, fill = TRUE, dec = dec)
 
   ### DummyFirst coding parameters
   rowParms = grep("Parameters", csvTemp[,5])
