@@ -64,6 +64,7 @@ exploreTree = function(resTree,
                           Covariates = Covariates,
                           analysis = analysis,
                           posCovVal = posCovVal,
+                          sizeMlevels = sizeMlevels,
                           sep = sep,
                           dec = dec)
 
@@ -143,6 +144,7 @@ run3step = function(dirPost,
                     Covariates,
                     posCovVal,
                     analysis,
+                    sizeMlevels,
                     sep = ";",
                     dec = dec){
 
@@ -193,14 +195,33 @@ run3step = function(dirPost,
     rowWald = which(Results[,5]=="WaldStatistics")
     rowProfile = which(Results[,5]=="Profile")
     Wald[[reps]] = rna(Results[rowWald,-c(1:5)])
+    
+    nParms = sizeMlevels
+    ncolParms = length(sizeMlevels)*2
+    nrowParms = splitSizes[reps]
+    parmsToBe = matrix(,ncol = ncolParms, nrow = nrowParms)
+    
     ParmsTemp = rna(Results[rowParms,-c(1:5)])
+    # if(any(sizeMlevels==1)){
+    # for(nVariance in 1:sum(sizeMlevels==1)){
+    #   ParmsTemp = ParmsTemp[-length(ParmsTemp)]
+    # }}
+    # 
+    # ParmsTemp2 = ParmsTemp
+    # 
+    # for(idxVar in 1:length(sizeMlevels)){
+    #   intVar = ParmsTemp2[]
+    #   
+    # }
+    # 
+    # 
     Profile[[reps]] = rna(Results[rowProfile,-c(1:5)])
 
-    matParms = rbind(0, matrix(ParmsTemp, nrow = splitSizes[reps] - 1))
+    # matParms = rbind(0, matrix(ParmsTemp, nrow = splitSizes[reps] - 1))
 
-    colnames(matParms) = c("Intercept", Covariates)
-    rownames(matParms) = paste0(names(splitSizes)[reps], 1:splitSizes[reps])
-    Parms[[reps]] = matParms
+    # colnames(matParms) = c("Intercept", Covariates)
+    # rownames(matParms) = paste0(names(splitSizes)[reps], 1:splitSizes[reps])
+    Parms[[reps]] = ParmsTemp
 
     if(analysis == "dependent"){
     EV[[reps]] =  unique(read.table(paste0("ev",
