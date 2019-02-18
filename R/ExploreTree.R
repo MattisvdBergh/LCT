@@ -204,47 +204,12 @@ run3step = function(dirPost,
     Profile[[reps]] = rna(Results[rowProfile,-c(1:5)])
     Parms[[reps]] = ParmsTemp
 
-    if(analysis == "dependent"){
     EV[[reps]] =  unique(read.table(paste0("ev",
                                            pSplits[reps],
                                            ".txt"),
-                                    sep = sep, header = TRUE))
-    }
+                                    sep = sep, dec = dec, header = TRUE))
 
-    if(analysis == "covariates"){
-      dataSplit = read.delim(paste0(dirTreeResults, "/", dirPost[reps]))
-      meanCov = apply(dataSplit[,Covariates], 2, function(x){mean(x, na.rm = TRUE)})
-      betaAllCov = betaAllCovMean = list()
-      length(betaAllCov) = length(betaAllCovMean) = nCov
-      names(betaAllCov) = names(betaAllCovMean) = Covariates
 
-      for(idxCov in 1:nCov){
-        if(is.null(posCovVal)){
-          posCovVal = sort(unique(rna(dataSplit[,Covariates[idxCov]])))
-        }
-        betaCovVal = sapply(matParms[,Covariates[idxCov]], function(x){x * posCovVal})
-        betaCovMean = matParms[,Covariates[idxCov]] * meanCov[idxCov]
-        rownames(betaCovVal) = posCovVal
-        betaAllCov[[idxCov]] = betaCovVal
-        betaAllCovMean[[idxCov]] = betaCovMean
-      }
-
-      EVcov = list()
-      length(EVcov) = nCov
-      names(EVcov) = Covariates
-      for(idxCov in 1:nCov){
-        expCov = list()
-        for(idxClass in 1:splitSizes[reps]){
-          expCov[[idxClass]] =  exp(matParms[idxClass,1] +
-                                      betaAllCov[[idxCov]][,idxClass] +
-                                      sum(sapply(betaAllCovMean[-idxCov],
-                                                 function(x){x[idxClass]})))
-        }
-        allExp = Reduce("+", expCov)
-        EVcov[[idxCov]] = sapply(expCov, function(x){x/allExp})
-      }
-      EV[[reps]] = EVcov
-    }
   }
 
   WaldTotal = Wald[!sapply(Wald, is.null)]
@@ -288,8 +253,6 @@ reformResults = function(splitSizes,
       EV1split[[j]] = EVTemp[,grepl(Covariates[j], colnames(EVTemp))]
 
       if(mLevels[j] == "ordinal"){
-        EV1split
-
         Parms1split[[j]] = ParmsTemp[1:((sizeMlevels[j] - 1) + nclassTemp  - 1)]
         ParmsTemp = ParmsTemp[-c(1:((sizeMlevels[j] - 1) * nclassTemp))]
       }
